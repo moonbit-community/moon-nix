@@ -9,7 +9,7 @@
 # gate; it only sets the dependency flag, the actual libc link still happens once,
 # in the final executable. (Mirrors mymoon's own `zig build-obj` render.)
 #
-#   moonNix.buildMoonbitZigStub { pname = "a_b_0"; stub = ./a/b/stub.zig; toolchain = …; }
+#   moon2nix.buildMoonbitZigStub { pname = "a_b_0"; stub = ./a/b/stub.zig; toolchain = …; }
 #   # → $out/a_b_0.o
 #
 # `modules` (default `[]`) are translate-c'd headers the stub `@import`s, as

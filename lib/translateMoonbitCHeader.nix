@@ -4,7 +4,7 @@
 # translated module at `$out/translated.zig`; `buildMoonbitZigStub` wires it as a
 # `-M` module via `{ name; drv; }`.
 #
-#   moonNix.translateMoonbitCHeader { pname = "a_b_moonbit_tc"; header = "moonbit.h"; toolchain = …; }
+#   moon2nix.translateMoonbitCHeader { pname = "a_b_moonbit_tc"; header = "moonbit.h"; toolchain = …; }
 #   # → $out/translated.zig
 #
 # Two sandbox-specific workarounds vs the bare `zig translate-c -lc` mymoon runs:

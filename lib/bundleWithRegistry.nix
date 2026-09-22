@@ -6,7 +6,7 @@
 }:
 { cachedRegistry }:
 symlinkJoin {
-  name = "moon-nix-home";
+  name = "moon2nix-home";
   paths = [
     toolchain
     cachedRegistry

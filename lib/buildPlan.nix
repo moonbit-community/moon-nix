@@ -1,14 +1,14 @@
-# Evaluate a checked-in planner JSON without running MoonBit during evaluation.
+# Turn an imported, checked-in moon.nix plan into per-action derivations.
 { pkgs, toolchain }:
 {
   plan,
   sources,
-  name ? "moon-nix-project",
+  name ? "moon2nix-project",
   nativeBuildInputs ? [ ],
 }:
 let
   inherit (pkgs) lib;
-  data = if builtins.isAttrs plan then plan else lib.importJSON plan;
+  data = plan;
   validOutput =
     path: lib.hasPrefix "@build@/" path && !(builtins.elem ".." (lib.splitString "/" path));
   outputs = lib.concatMap (action: action.outputs) data.actions;
@@ -72,14 +72,14 @@ let
             value = "${actions.${producers.${output}}}/${relative output}";
           }) dependencyOutputs
         );
-      config = pkgs.writeText "moon-nix-action.json" (
+      config = pkgs.writeText "moon2nix-action.json" (
         builtins.toJSON {
           inherit action substitutions;
           packages = builtins.filter (entry: builtins.elem entry.artifact dependencyOutputs) data.packages;
         }
       );
     in
-    pkgs.runCommand "moon-nix-${builtins.baseNameOf action.id}"
+    pkgs.runCommand "moon2nix-${builtins.baseNameOf action.id}"
       {
         nativeBuildInputs = [
           toolchain
@@ -106,7 +106,7 @@ let
   );
   roots = map (root: "${actions.${producers.${root}}}/${relative root}") data.roots;
 in
-assert lib.assertMsg valid "moon-nix: invalid plan schema, source count, or output ownership";
+assert lib.assertMsg valid "moon2nix: invalid plan schema, source count, or output ownership";
 pkgs.runCommand name
   {
     passthru = { inherit actions roots; };

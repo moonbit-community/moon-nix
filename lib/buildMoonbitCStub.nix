@@ -1,7 +1,7 @@
 # Compile one C-FFI stub (`options("native-stub")`) into a `.o`, for the native
 # backend. `$CC` is stdenv's cc-wrapper; `moonbit.h` comes from the toolchain.
 #
-#   moonNix.buildMoonbitCStub { pname = "a_b_0"; stub = ./a/b/stub.c; toolchain = …; }
+#   moon2nix.buildMoonbitCStub { pname = "a_b_0"; stub = ./a/b/stub.c; toolchain = …; }
 #   # → $out/a_b_0.o
 {
   lib,

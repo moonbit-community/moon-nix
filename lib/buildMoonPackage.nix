@@ -1,9 +1,9 @@
-# Main builder of moonNix.
+# Main project builder of moon2nix.
 #
 # Takes module metadata to determine version and preferred
 # build target so callers need minimal configuration:
 #
-#   pkgs.moonNix.buildMoonPackage {
+#   moon2nix.buildMoonPackage {
 #     src = ./.;
 #     moonMod = { name = "owner/project"; version = "0.1.0"; deps = { }; };
 #     moonRegistryIndex = inputs.moon-registry;

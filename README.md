@@ -1,15 +1,16 @@
-# moon-nix
+# moon2nix
 
 Build MoonBit projects with Nix. Toolchains come from **moonbit-overlay**;
 this repository owns dependency packaging, project builders, and generated
 build graphs.
 
-The standalone **moon-nix-plan** generator reuses the parser, package discovery,
+The standalone **moon2nix** generator reuses the parser, package discovery,
 package dependency solver, build planner, and command renderer extracted from
-[moonbit-community/moon](https://github.com/moonbit-community/moon). Its JSON
-output is consumed by Nix as one derivation per build action, with explicit
-artifact dependencies. Like cargo2nix, generation is a separate step: importing
-a checked-in plan does not run a resolver or compiler during Nix evaluation.
+[moonbit-community/moon](https://github.com/moonbit-community/moon). Its
+structured build plan is rendered directly as a `moon.nix` expression. Nix consumes it as
+one derivation per build action, with explicit artifact dependencies. Like
+cargo2nix, generation is a separate step: importing a checked-in plan does not
+run a resolver or compiler during Nix evaluation.
 
 ## Development
 
@@ -19,7 +20,7 @@ return to the overlay's default branch after the SDK-interface refactor lands.
 The library itself takes `pkgs` and `toolchain` explicitly.
 
 ```bash
-nix build .#generator
+nix build .#moon2nix
 nix flake check
 ```
 
@@ -34,9 +35,9 @@ From this repository, export a build plan for the example's main package:
 ```bash
 toolchain=$(nix build github:moonbit-community/moonbit-overlay/fix/modernize-moonbit-tests#latest \
   --no-link --print-out-paths)
-nix run .#generator -- \
+nix run . -- \
   ./examples/hello example/hello/main wasm-gc "$toolchain" \
-  ./examples/support > moon-nix-plan.json
+  ./examples/support > moon.nix
 ```
 
 Arguments are `ROOT MAIN_PACKAGE TARGET TOOLCHAIN [DEPENDENCY_ROOT ...]`.
@@ -49,12 +50,12 @@ build time.
 
 ```nix
 let
-  moonNix = moon-nix.lib.mkMoonNix {
+  moon2nix = inputs.moon2nix.lib.mkMoon2Nix {
     inherit pkgs;
     toolchain = moonbit-overlay.packages.${pkgs.system}.latest;
   };
-in moonNix.buildPlan {
-  plan = ./moon-nix-plan.json;
+in moon2nix.buildPlan {
+  plan = import ./moon.nix;
   sources = [ ./examples/hello ./examples/support ];
 }
 ```
@@ -77,10 +78,10 @@ exposes `actions` (by artifact ID) and `roots` for inspecting the graph.
 ## Existing builders
 
 The original `moonPlatform` implementation and tests have moved here. Initialize
-it with `mkMoonNix { pkgs = ...; toolchain = ...; }`, or without flakes:
+it with `mkMoon2Nix { pkgs = ...; toolchain = ...; }`, or without flakes:
 
 ```nix
-moonNix = import ./default.nix { inherit pkgs toolchain; };
+moon2nix = import ./default.nix { inherit pkgs toolchain; };
 ```
 
 - `buildMoonPackage`: run `moon build` for a project with explicit `moonMod`

@@ -3,7 +3,7 @@
 # (+ libm) into the final executable. The companion to [linkMoonbitProgram] (with
 # `target = "native"`) and [buildMoonbitRuntime].
 #
-#   moonNix.makeMoonbitExecutable {
+#   moon2nix.makeMoonbitExecutable {
 #     pname    = "a_b";
 #     programC = cDrv;        # linkMoonbitProgram { target = "native"; } → $out/a_b.c
 #     runtime  = runtimeDrv;  # buildMoonbitRuntime → $out/runtime.o

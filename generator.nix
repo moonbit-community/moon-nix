@@ -1,7 +1,7 @@
 { pkgs, toolchain }:
 let
-  moonNix = import ./default.nix { inherit pkgs toolchain; };
-  registry = moonNix.buildCachedRegistry {
+  moon2nix = import ./default.nix { inherit pkgs toolchain; };
+  registry = moon2nix.buildCachedRegistry {
     registryIndexSrc = ./generator/registry;
     moonMod.deps = {
       "moonbitlang/async" = "0.21.2";
@@ -16,7 +16,7 @@ let
   };
 in
 pkgs.stdenv.mkDerivation {
-  pname = "moon-nix-plan";
+  pname = "moon2nix";
   version = "0.1.0";
   src = pkgs.lib.cleanSourceWith {
     src = ./generator;
@@ -42,13 +42,13 @@ pkgs.stdenv.mkDerivation {
   '';
   installPhase = ''
     runHook preInstall
-    install -Dm755 _build/native/release/build/moon/main/main.exe $out/bin/moon-nix-plan
+    install -Dm755 _build/native/release/build/moon/main/main.exe $out/bin/moon2nix
     runHook postInstall
   '';
   meta = {
     description = "Export MoonBit build plans for Nix";
     license = pkgs.lib.licenses.asl20;
-    mainProgram = "moon-nix-plan";
+    mainProgram = "moon2nix";
     platforms = [
       "x86_64-linux"
       "aarch64-darwin"

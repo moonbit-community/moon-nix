@@ -6,7 +6,7 @@
 # sniffing. `cpp = true` selects Objective-C++ (`.mm`). Frameworks/libs are a
 # LINK-time concern (the package's `stub-cc-link-flags`), not this compile step.
 #
-#   moonNix.buildMoonbitObjcStub { pname = "a_b_0"; stub = ./a/b/stub.m; toolchain = …; }
+#   moon2nix.buildMoonbitObjcStub { pname = "a_b_0"; stub = ./a/b/stub.m; toolchain = …; }
 #   # → $out/a_b_0.o
 {
   stdenv,

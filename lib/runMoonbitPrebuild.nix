@@ -8,7 +8,7 @@
 # `moon`'s built-in `:embed` lowers to `moon tool embed …`, so the toolchain is on
 # PATH. Codegen that needs extra tools passes them via `buildInputs`.
 #
-#   moonNix.runMoonbitPrebuild {
+#   moon2nix.runMoonbitPrebuild {
 #     pname   = "gen_a_b_x";
 #     command = "moon tool embed --text -i hello.txt -o hello.mbt";
 #     inputs  = [ { path = "hello.txt"; src = ./a/b/hello.txt; } ];
