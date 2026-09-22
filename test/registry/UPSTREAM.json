@@ -1,0 +1,5 @@
+{
+  "repository": "https://mooncakes.io/git/index",
+  "revision": "f0aa1651050f9651faad3fa2496c20117acbc637",
+  "note": "Only the exact dependency closure of the project test is included."
+}
