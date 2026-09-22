@@ -1,0 +1,10 @@
+import {
+  "moon/moonbuild/analysis/model",
+  "moon/util/os",
+  "moon/util/parse",
+  "moon/util/config",
+  "moon/util/pathx",
+  "moon/util/statcache",
+}
+
+supported_targets = "native"

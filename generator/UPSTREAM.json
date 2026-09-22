@@ -1,0 +1,27 @@
+{
+  "repository": "https://github.com/moonbit-community/moon",
+  "revision": "a22b7c605e4ebd39713cd45ff6e183bee6ea0f58",
+  "packages": [
+    "moonbuild/analysis/discover",
+    "moonbuild/analysis/model",
+    "moonbuild/analysis/pkg_solve",
+    "moonbuild/build_plan",
+    "moonbuild/core",
+    "moonbuild/engine/executor",
+    "util/cc",
+    "util/config",
+    "util/digest",
+    "util/os",
+    "util/parse",
+    "util/pathx",
+    "util/statcache"
+  ],
+  "changes": [
+    "Excluded upstream test sources and test-only imports; added a standalone export CLI.",
+    "Removed trailing whitespace in four upstream source files."
+  ],
+  "adaptedFunctions": [
+    "src/main/session.mbt: provision_local_inputs / split_listing_fqn (package listing)"
+  ],
+  "xRevision": "b4a4017757179e1290d3e2b939e7e7128082639e"
+}

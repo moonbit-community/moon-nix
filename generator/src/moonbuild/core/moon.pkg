@@ -1,0 +1,5 @@
+// `core` is the narrow waist: the build-graph vocabulary (Action / ActionSpec /
+// Command / Outcome / errors) + the seam contracts (Rebuilder / Scheduler /
+// Backend / Executor). NO concrete strategies, so NO `os` import and NO
+// target restriction — every other moonbuild package depends on this one, and
+// it depends on ~nothing. The bare command rendering lives in `executor`.

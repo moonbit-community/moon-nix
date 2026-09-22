@@ -1,0 +1,10 @@
+// Logical path-string utilities: POSIX-only basename/dirname/join + extension
+// manipulation + OS-separator normalization. Pure `moonbitlang/core` String API,
+// backend-agnostic.
+//
+// These operate on LOGICAL names (module/package paths, artifact stems) which are
+// ALWAYS `/`-separated regardless of OS. For real OS filesystem paths use
+// `moonbitlang/x/path` instead — its OS-aware basename/dirname are correct there
+// but would mis-split a logical name like `encoding/utf8` on Windows.
+import {
+}

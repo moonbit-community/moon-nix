@@ -1,0 +1,9 @@
+import {
+  "moon/moonbuild/analysis/model",
+  "moon/util/config",
+  "moon/util/os",
+}
+
+
+
+supported_targets = "native"

@@ -1,0 +1,12 @@
+// moonparse: hand-written lexer + recursive-descent parser for the
+// moon.mod / moon.pkg DSL, producing typed `@config.Value` entries. No external
+// parser library (it sits at the bottom of `resolve`, so a downloaded dependency
+// would be a chicken-and-egg) and no codegen — the grammar is tiny and fixed.
+import {
+  "moon/util/config",
+  "moon/util/os",
+  "moonbitlang/core/json",
+  "moonbitlang/core/string",
+}
+
+supported_targets = "native"

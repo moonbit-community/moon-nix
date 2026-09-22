@@ -1,0 +1,10 @@
+// The `config` package: frontend for the moon.mod / moon.pkg DSL.
+// Stage 1: lexer (this file's package). Stage 2 (next): parser -> typed config.
+
+// `json` is used explicitly: the typed manifests derive `ToJson`/`FromJson` and
+// the decoder pattern-matches on `Json` values. `debug` is named explicitly by the
+// `extend ... with @debug.Debug` declarations that make the derived promotions explicit.
+import {
+  "moonbitlang/core/debug",
+  "moonbitlang/core/json",
+}

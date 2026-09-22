@@ -1,0 +1,7 @@
+import {
+  "moon/moonbuild/core",
+  "moon/util/cc",
+  "moon/util/pathx",
+}
+
+supported_targets = "native"

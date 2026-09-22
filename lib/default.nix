@@ -86,6 +86,7 @@ let
   archiveMoonbitStubs = import ./archiveMoonbitStubs.nix { inherit lib stdenv; };
 in
 {
+  buildPlan = import ./buildPlan.nix { inherit pkgs toolchain; };
   inherit
     buildCachedRegistry
     bundleWithRegistry

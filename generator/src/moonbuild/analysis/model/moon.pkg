@@ -1,0 +1,7 @@
+import {
+  "moon/util/config",
+  "moon/util/pathx",
+  "moonbitlang/core/json",
+}
+
+supported_targets = "native"

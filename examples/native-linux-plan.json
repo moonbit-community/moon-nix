@@ -1,0 +1,342 @@
+{
+  "schemaVersion": 1,
+  "target": "native",
+  "platform": "linux",
+  "main": "example/hello/main",
+  "sourceCount": 2,
+  "actions": [
+    {
+      "id": "@build@/runtime-env.o",
+      "outputs": [
+        "@build@/runtime-env.o"
+      ],
+      "inputs": [
+        "@toolchain@/lib/runtime/env.c"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "cc",
+          "-o",
+          "@build@/runtime-env.o",
+          "-I@toolchain@/include",
+          "-c",
+          "-fwrapv",
+          "-fno-strict-aliasing",
+          "-O2",
+          "-DMOONBIT_ALLOW_STACKTRACE",
+          "@toolchain@/lib/runtime/env.c"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/runtime-utf.o",
+      "outputs": [
+        "@build@/runtime-utf.o"
+      ],
+      "inputs": [
+        "@toolchain@/lib/runtime/utf.c"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "cc",
+          "-o",
+          "@build@/runtime-utf.o",
+          "-I@toolchain@/include",
+          "-c",
+          "-fwrapv",
+          "-fno-strict-aliasing",
+          "-O2",
+          "-DMOONBIT_ALLOW_STACKTRACE",
+          "@toolchain@/lib/runtime/utf.c"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/runtime-runtime.o",
+      "outputs": [
+        "@build@/runtime-runtime.o"
+      ],
+      "inputs": [
+        "@toolchain@/lib/runtime/runtime.c"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "cc",
+          "-o",
+          "@build@/runtime-runtime.o",
+          "-I@toolchain@/include",
+          "-c",
+          "-fwrapv",
+          "-fno-strict-aliasing",
+          "-O2",
+          "-DMOONBIT_ALLOW_STACKTRACE",
+          "@toolchain@/lib/runtime/runtime.c"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/runtime-sync_io.o",
+      "outputs": [
+        "@build@/runtime-sync_io.o"
+      ],
+      "inputs": [
+        "@toolchain@/lib/runtime/sync_io.c"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "cc",
+          "-o",
+          "@build@/runtime-sync_io.o",
+          "-I@toolchain@/include",
+          "-c",
+          "-fwrapv",
+          "-fno-strict-aliasing",
+          "-O2",
+          "-DMOONBIT_ALLOW_STACKTRACE",
+          "@toolchain@/lib/runtime/sync_io.c"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/runtime-backtrace.o",
+      "outputs": [
+        "@build@/runtime-backtrace.o"
+      ],
+      "inputs": [
+        "@toolchain@/lib/runtime/backtrace.c"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "cc",
+          "-o",
+          "@build@/runtime-backtrace.o",
+          "-I@toolchain@/include",
+          "-c",
+          "-fwrapv",
+          "-fno-strict-aliasing",
+          "-O2",
+          "-DMOONBIT_ALLOW_STACKTRACE",
+          "@toolchain@/lib/runtime/backtrace.c"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/example/hello/main/main.c",
+      "outputs": [
+        "@build@/example/hello/main/main.c"
+      ],
+      "inputs": [
+        "@toolchain@/lib/core/_build/native/release/bundle/abort/abort.core",
+        "@toolchain@/lib/core/_build/native/release/bundle/core.core",
+        "@build@/example/support/support.core",
+        "@build@/example/hello/lib/lib.core",
+        "@build@/example/hello/main/main.core"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "moonc",
+          "link-core",
+          "@toolchain@/lib/core/_build/native/release/bundle/abort/abort.core",
+          "@toolchain@/lib/core/_build/native/release/bundle/core.core",
+          "@build@/example/support/support.core",
+          "@build@/example/hello/lib/lib.core",
+          "@build@/example/hello/main/main.core",
+          "-main",
+          "example/hello/main",
+          "-o",
+          "@build@/example/hello/main/main.c",
+          "-pkg-config-path",
+          "@src0@/main/moon.pkg.json",
+          "-pkg-sources",
+          "example/support:@src1@",
+          "-pkg-sources",
+          "example/hello/lib:@src0@/lib",
+          "-pkg-sources",
+          "example/hello/main:@src0@/main",
+          "-pkg-sources",
+          "moonbitlang/core:@toolchain@/lib/core",
+          "-target",
+          "native"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/example/hello/lib/lib.core",
+      "outputs": [
+        "@build@/example/hello/lib/lib.core",
+        "@build@/example/hello/lib/lib.mi"
+      ],
+      "inputs": [
+        "@src0@/lib/lib.mbt",
+        "@build@/example/support/support.core"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "moonc",
+          "build-package",
+          "@src0@/lib/lib.mbt",
+          "-o",
+          "@build@/example/hello/lib/lib.core",
+          "-pkg",
+          "example/hello/lib",
+          "-std-path",
+          "@toolchain@/lib/core/_build/native/release/bundle",
+          "-i",
+          "@toolchain@/lib/core/_build/native/release/bundle/prelude/prelude.mi:prelude",
+          "-i",
+          "@build@/example/support/support.mi:support",
+          "-pkg-sources",
+          "example/hello/lib:@src0@/lib",
+          "-target",
+          "native",
+          "-all-pkgs",
+          "@build@/all_pkgs.json"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/example/hello/main/main.exe",
+      "outputs": [
+        "@build@/example/hello/main/main.exe"
+      ],
+      "inputs": [
+        "@build@/example/hello/main/main.c",
+        "@build@/runtime-env.o",
+        "@build@/runtime-utf.o",
+        "@build@/runtime-runtime.o",
+        "@build@/runtime-sync_io.o",
+        "@build@/runtime-backtrace.o",
+        "@toolchain@/lib/libbacktrace.a",
+        "@toolchain@/lib/libmoonbitrun.o"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "cc",
+          "-o",
+          "@build@/example/hello/main/main.exe",
+          "-I@toolchain@/include",
+          "-fwrapv",
+          "-fno-strict-aliasing",
+          "-O2",
+          "@toolchain@/lib/libmoonbitrun.o",
+          "@build@/example/hello/main/main.c",
+          "@build@/runtime-env.o",
+          "@build@/runtime-utf.o",
+          "@build@/runtime-runtime.o",
+          "@build@/runtime-sync_io.o",
+          "@build@/runtime-backtrace.o",
+          "-lm",
+          "@toolchain@/lib/libbacktrace.a"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/example/hello/main/main.core",
+      "outputs": [
+        "@build@/example/hello/main/main.core",
+        "@build@/example/hello/main/main.mi"
+      ],
+      "inputs": [
+        "@src0@/main/main.mbt",
+        "@build@/example/hello/lib/lib.core"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "moonc",
+          "build-package",
+          "@src0@/main/main.mbt",
+          "-o",
+          "@build@/example/hello/main/main.core",
+          "-pkg",
+          "example/hello/main",
+          "-is-main",
+          "-std-path",
+          "@toolchain@/lib/core/_build/native/release/bundle",
+          "-i",
+          "@toolchain@/lib/core/_build/native/release/bundle/prelude/prelude.mi:prelude",
+          "-i",
+          "@build@/example/hello/lib/lib.mi:lib",
+          "-pkg-sources",
+          "example/hello/main:@src0@/main",
+          "-target",
+          "native",
+          "-all-pkgs",
+          "@build@/all_pkgs.json"
+        ],
+        "cwd": null
+      }
+    },
+    {
+      "id": "@build@/example/support/support.core",
+      "outputs": [
+        "@build@/example/support/support.core",
+        "@build@/example/support/support.mi"
+      ],
+      "inputs": [
+        "@src1@/lib.mbt"
+      ],
+      "command": {
+        "kind": "exec",
+        "argv": [
+          "moonc",
+          "build-package",
+          "@src1@/lib.mbt",
+          "-o",
+          "@build@/example/support/support.core",
+          "-pkg",
+          "example/support",
+          "-std-path",
+          "@toolchain@/lib/core/_build/native/release/bundle",
+          "-i",
+          "@toolchain@/lib/core/_build/native/release/bundle/prelude/prelude.mi:prelude",
+          "-pkg-sources",
+          "example/support:@src1@",
+          "-target",
+          "native",
+          "-all-pkgs",
+          "@build@/all_pkgs.json",
+          "-w",
+          "-a"
+        ],
+        "cwd": null
+      }
+    }
+  ],
+  "packages": [
+    {
+      "root": "example/hello",
+      "rel": "lib",
+      "artifact": "@build@/example/hello/lib/lib.mi"
+    },
+    {
+      "root": "example/hello",
+      "rel": "main",
+      "artifact": "@build@/example/hello/main/main.mi"
+    },
+    {
+      "root": "example/support",
+      "rel": "",
+      "artifact": "@build@/example/support/support.mi"
+    }
+  ],
+  "roots": [
+    "@build@/example/hello/main/main.exe"
+  ]
+}

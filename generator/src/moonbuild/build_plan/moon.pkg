@@ -1,0 +1,17 @@
+import {
+  "moon/moonbuild/analysis/model",
+  "moon/moonbuild/analysis/pkg_solve",
+  "moon/util/cc",
+  "moon/moonbuild/core",
+  "moon/util/config",
+  "moon/util/os",
+  "moon/util/pathx",
+  "moonbitlang/core/json",
+}
+
+// Only the wbtests render commands to assert them; production lowering produces
+// structured `@core.Action`s and never renders, so `executor` is test-only here.
+// `os` is needed by the blackbox tests to build `BuildConfig.target_platform`.
+
+
+supported_targets = "native"
