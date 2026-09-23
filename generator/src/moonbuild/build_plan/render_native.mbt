@@ -82,32 +82,22 @@ fn render_build_zig_stub(
   include_dir : String,
   stub : String,
   modules : Array[(String, String)],
-  target : String?,
 ) -> @core.Command {
-  // Cross build: `-target <triple>` makes the object match the cross C objects it
-  // links with. `None` (native) omits it → zig's host default, unchanged.
-  let tgt : Array[String] = match target {
-    Some(t) => ["-target", t]
-    None => []
-  }
   // `-fPIC` so the object links into moonbit's (PIE-by-default on many hosts)
   // final executable without a text-relocation error.
   if modules.is_empty() {
     // Common stub (hand-written `extern` decls): the bare positional-file form.
-    return cc_exec(
-      [
-        zig,
-        "build-obj",
-        "-femit-bin=" + out,
-        "-O",
-        "ReleaseFast",
-        "-fPIC",
-        "-lc",
-        ..tgt,
-        "-I" + include_dir,
-        stub,
-      ],
-    )
+    return cc_exec([
+      zig,
+      "build-obj",
+      "-femit-bin=" + out,
+      "-O",
+      "ReleaseFast",
+      "-fPIC",
+      "-lc",
+      "-I" + include_dir,
+      stub,
+    ])
   }
   // The stub `@import`s translate-c'd modules, so use the explicit module form:
   // the bare positional-file form can't carry import deps. Per-module settings
@@ -121,7 +111,6 @@ fn render_build_zig_stub(
     "ReleaseFast",
     "-fPIC",
     "-lc",
-    ..tgt,
     "-I" + include_dir,
   ]
   for m in modules {

@@ -151,8 +151,6 @@ fn zigstub_action(
   // Each translated module's `.zig` is a build input → its TranslateC action must
   // run first, and a re-translation re-builds this stub (digest picks it up).
   let inputs = [stub, ..modules.map(fn(m) { m.1 })]
-  // Nix native builds use the host target for both C and Zig.
-  let target : String? = None
   {
     primary_output: out,
     outputs: [out],
@@ -162,7 +160,6 @@ fn zigstub_action(
       include_dir=nc.include_dir(),
       stub~,
       modules~,
-      target~,
     ),
   }
 }

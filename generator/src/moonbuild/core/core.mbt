@@ -101,8 +101,7 @@ pub(all) enum ActionSpec {
     zig~ : String,
     include_dir~ : String,
     stub~ : String,
-    modules~ : Array[(String, String)],
-    target~ : String?
+    modules~ : Array[(String, String)]
   )
   TranslateC(zig~ : String, include_dir~ : String, header~ : String)
   BuildObjcStub(

@@ -294,15 +294,8 @@ pub fn render_command(
       )
     @core.BuildCStub(cc~, include_dir~, stub~, cc_flags~) =>
       render_build_cstub(act.primary_output, cc, include_dir, stub, cc_flags)
-    @core.BuildZigStub(zig~, include_dir~, stub~, modules~, target~) =>
-      render_build_zig_stub(
-        act.primary_output,
-        zig,
-        include_dir,
-        stub,
-        modules,
-        target,
-      )
+    @core.BuildZigStub(zig~, include_dir~, stub~, modules~) =>
+      render_build_zig_stub(act.primary_output, zig, include_dir, stub, modules)
     @core.TranslateC(zig~, include_dir~, header~) =>
       render_translate_c(act.primary_output, zig, include_dir, header)
     @core.BuildObjcStub(cc~, include_dir~, stub~, cc_flags~, cpp~) =>

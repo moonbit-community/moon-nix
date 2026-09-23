@@ -5,10 +5,9 @@ this repository owns dependency packaging, project builders, and generated
 build graphs.
 
 The standalone *moon2nix* generator provides package discovery, dependency
-solving, build planning, and command rendering. Its structured build plan is
-rendered directly as a =moon.nix= expression. Nix consumes it as one derivation
-per build action, with explicit artifact dependencies. Like cargo2nix,
-generation is a separate step: importing a checked-in plan does not run a
+solving, build planning, and command rendering. It emits a =moon.nix= function
+that explicitly wires one Nix derivation per build action. Like cargo2nix,
+generation is a separate step: importing the checked-in file does not run a
 resolver or compiler during Nix evaluation.
 
 ** Development
@@ -58,8 +57,8 @@ let
     inherit pkgs;
     toolchain = moonbit-overlay.packages.${pkgs.system}.latest;
   };
-in moon2nix.buildPlan {
-  plan = import ./moon.nix;
+in import ./moon.nix {
+  inherit moon2nix;
   sources = [ ./app ./dependency ];
 }
 #+end_src
@@ -70,9 +69,10 @@ Use =native= to generate a native plan; its output is =bin/main.exe= on Linux.
 plan and regenerate the plan when the toolchain, manifests, source-file list,
 imports, or selected target changes.
 
-The generated =moon.nix= contains one backend-specific plan, independent of the
-machine that generated it. Nix supplies the native toolchain. Use =stdenv= and
-=nativeBuildInputs= to select the compiler and dependencies. =actionOverrides=
+The generated =moon.nix= contains one backend-specific derivation graph,
+independent of the machine that generated it. Nix supplies the native toolchain.
+Pass =stdenv= and =nativeBuildInputs= to the generated function to select the
+compiler and dependencies. =actionOverrides=
 returns derivation attributes for each action, allowing platform-specific flags
 and environment variables:
 
@@ -93,7 +93,7 @@ derivation, including transitive =.mi= interfaces needed by =-all-pkgs=.
 Unrelated module roots are excluded from an action's source substitutions;
 source invalidation within a module is currently at module granularity.
 
-=buildPlan= accepts =name=, =stdenv=, and additional =nativeBuildInputs=. Native
+The generated function accepts =name=, =stdenv=, and additional =nativeBuildInputs=. Native
 compilation uses the compiler provided by Nix's =stdenv=; the generator does not
 probe a compiler on the machine exporting the plan. For example, pass
 =stdenv = pkgs.clangStdenv;= to use Clang. Its =passthru= exposes =actions=
@@ -112,13 +112,13 @@ Build the exported plan and use it as the standard library for another plan:
 
 #+begin_src nix
 let
-  coreBundle = moon2nix.buildPlan {
+  coreBundle = import ./core.nix {
+    inherit moon2nix;
     name = "moonbit-core";
-    plan = import ./core.nix;
     sources = [ "${toolchain}/lib/core" ];
   };
-in moon2nix.buildPlan {
-  plan = import ./moon.nix;
+in import ./moon.nix {
+  inherit moon2nix;
   sources = [ ./app ./dependency ];
   stdlib = coreBundle;
 }
@@ -146,8 +146,8 @@ moon2nix = import ./default.nix { inherit pkgs toolchain; };
   builders, =translateMoonbitCHeader=, =archiveMoonbitStubs=, and
   =runMoonbitPrebuild=: lower-level build primitives.
 
-The generated plan path currently uses structured commands, while the migrated
-fine-grained builders remain available as direct building blocks.
+Generated derivations use structured commands, while the migrated fine-grained
+builders remain available as direct building blocks.
 
 ** Current boundaries
 

@@ -17,7 +17,6 @@
   lib,
   stdenv,
   pkg-config,
-  zig,
 }:
 {
   pname,
@@ -30,11 +29,6 @@
   # default empty ⇒ the link is unchanged (backward-compatible).
   pkgConfig ? [ ],
   buildInputs ? [ ],
-  # Cross-compile: a zig target triple (e.g. "x86_64-windows-gnu"). When set, link
-  # with `zig cc -target` instead of stdenv's `$CC`, and DROP the build-arch
-  # prebuilt toolchain objects (simdutf/libbacktrace) — they are gated off for a
-  # cross target exactly as in mymoon's own native link. `null` ⇒ a host build.
-  crossTarget ? null,
   toolchain,
 }:
 let
@@ -42,14 +36,7 @@ let
   pkgCfgLibs = lib.optionalString (
     pkgConfig != [ ]
   ) "$(pkg-config --libs ${lib.escapeShellArgs pkgConfig})";
-  cc = if crossTarget == null then "$CC" else "${zig}/bin/zig cc -target ${crossTarget}";
-  # Host: link the prebuilt simdutf + libbacktrace (+ libm). Cross: none of these
-  # build-arch objects exist for the target — link only libm (the target libc's).
-  tailObjs =
-    if crossTarget == null then
-      "${toolchain}/lib/moonbit_simdutf.o ${toolchain}/lib/simdutf.o -lm ${toolchain}/lib/libbacktrace.a"
-    else
-      "-lm";
+  tailObjs = "${toolchain}/lib/moonbit_simdutf.o ${toolchain}/lib/simdutf.o -lm ${toolchain}/lib/libbacktrace.a";
 in
 stdenv.mkDerivation {
   name = pname;
@@ -61,7 +48,7 @@ stdenv.mkDerivation {
     runHook preBuild
     mkdir -p $out
     export HOME=$TMPDIR
-    ${cc} -o $out/${pname} -I${toolchain}/include -g -fwrapv -fno-strict-aliasing -Og \
+    $CC -o $out/${pname} -I${toolchain}/include -g -fwrapv -fno-strict-aliasing -Og \
       ${programC}/${pname}.c ${runtime}/runtime.o \
       ${lib.escapeShellArgs stubArgs} \
       ${pkgCfgLibs} \

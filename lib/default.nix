@@ -15,13 +15,12 @@ let
   buildMoonbitInterface = import ./buildMoonbitInterface.nix { inherit lib stdenv; };
   runMoonbitPrebuild = import ./runMoonbitPrebuild.nix { inherit lib stdenv; };
   linkMoonbitProgram = import ./linkMoonbitProgram.nix { inherit lib stdenv; };
-  buildMoonbitRuntime = import ./buildMoonbitRuntime.nix { inherit stdenv zig; };
+  buildMoonbitRuntime = import ./buildMoonbitRuntime.nix { inherit stdenv; };
   makeMoonbitExecutable = import ./makeMoonbitExecutable.nix {
     inherit
       lib
       stdenv
       pkg-config
-      zig
       ;
   };
   buildMoonbitCStub = import ./buildMoonbitCStub.nix {
@@ -29,7 +28,6 @@ let
       lib
       stdenv
       pkg-config
-      zig
       ;
   };
   buildMoonbitZigStub = import ./buildMoonbitZigStub.nix {
@@ -45,7 +43,8 @@ let
   archiveMoonbitStubs = import ./archiveMoonbitStubs.nix { inherit lib stdenv; };
 in
 {
-  buildPlan = import ./buildPlan.nix { inherit pkgs toolchain; };
+  buildAction = import ./buildAction.nix { inherit pkgs toolchain; };
+  finishBuild = import ./finishBuild.nix { inherit pkgs; };
   inherit
     buildMoonbitPackage
     buildMoonbitInterface

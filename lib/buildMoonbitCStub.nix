@@ -7,7 +7,6 @@
   lib,
   stdenv,
   pkg-config,
-  zig,
 }:
 {
   pname,
@@ -17,16 +16,12 @@
   # them. Both default empty ⇒ the compile is unchanged (backward-compatible).
   pkgConfig ? [ ],
   buildInputs ? [ ],
-  # Cross-compile: a zig target triple. When set, compile the stub with
-  # `zig cc -target` instead of stdenv's `$CC`. `null` ⇒ a host build.
-  crossTarget ? null,
   toolchain,
 }:
 let
   pkgCfgCflags = lib.optionalString (
     pkgConfig != [ ]
   ) "$(pkg-config --cflags ${lib.escapeShellArgs pkgConfig})";
-  cc = if crossTarget == null then "$CC" else "${zig}/bin/zig cc -target ${crossTarget}";
 in
 stdenv.mkDerivation {
   name = pname;
@@ -38,7 +33,7 @@ stdenv.mkDerivation {
     runHook preBuild
     mkdir -p $out
     export HOME=$TMPDIR
-    ${cc} -o $out/${pname}.o -I${toolchain}/include -g -c -fwrapv -fno-strict-aliasing \
+    $CC -o $out/${pname}.o -I${toolchain}/include -g -c -fwrapv -fno-strict-aliasing \
       -Og ${pkgCfgCflags} ${stub}
     runHook postBuild
   '';

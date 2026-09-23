@@ -33,8 +33,6 @@
   # them. Both default empty ⇒ the compile is unchanged (backward-compatible).
   pkgConfig ? [ ],
   buildInputs ? [ ],
-  # Cross-compile: a zig target triple. When set, `zig build-obj -target` it.
-  crossTarget ? null,
 }:
 let
   moduleArgs =
@@ -45,7 +43,6 @@ let
   pkgCfgCflags = lib.optionalString (
     pkgConfig != [ ]
   ) "$(pkg-config --cflags ${lib.escapeShellArgs pkgConfig})";
-  targetArg = lib.optionalString (crossTarget != null) "-target ${crossTarget}";
 in
 stdenv.mkDerivation {
   name = pname;
@@ -59,7 +56,7 @@ stdenv.mkDerivation {
     mkdir -p $out
     export HOME=$TMPDIR
     ${zig}/bin/zig build-obj -femit-bin=$out/${pname}.o -O ReleaseFast -fPIC -lc \
-      ${targetArg} -I${toolchain}/include ${pkgCfgCflags} ${stubArg}
+      -I${toolchain}/include ${pkgCfgCflags} ${stubArg}
     runHook postBuild
   '';
 }
