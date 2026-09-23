@@ -183,17 +183,3 @@ fn last_name_seg(s : String) -> String {
 pub fn all_pkgs_path(cfg : BuildConfig) -> String {
   cfg.out_dir + "/all_pkgs.json"
 }
-
-///|
-/// Whether `link-core` emits a `<out>.map` source map for this config: debug mode
-/// on a wasm/js backend. The native-family backends (native C, llvm) codegen to
-/// objects and reject `-source-map`, so they never produce a map. Mirrors the
-/// command renderer's `-source-map` gate, so the build plan can declare the `.map` as a
-/// declared byproduct.
-fn emits_source_map(cfg : BuildConfig) -> Bool {
-  guard cfg.mode is Debug else { return false }
-  match cfg.backend {
-    WasmGc | Wasm | Js => true
-    Native(_) | Llvm(_) => false
-  }
-}

@@ -23,12 +23,8 @@ fn render_build_runtime(
   include_dir : String,
   runtime_c : String,
   simdutf : Bool,
-  debug_info : Bool,
 ) -> @core.Command {
   let argv = [cc, "-o", out, "-I" + include_dir]
-  if debug_info {
-    argv.push("-g")
-  }
   argv.push("-c")
   argv.push("-fwrapv")
   argv.push("-fno-strict-aliasing")
@@ -51,19 +47,14 @@ fn render_build_cstub(
   include_dir : String,
   stub : String,
   cc_flags : Array[String],
-  debug_info : Bool,
-  debug_mode : Bool,
 ) -> @core.Command {
   let has_user_flags = !cc_flags.is_empty()
   let argv = [cc, "-o", out, "-I" + include_dir]
-  if debug_info {
-    argv.push("-g")
-  }
   argv.push("-c")
   argv.push("-fwrapv")
   argv.push("-fno-strict-aliasing")
   if !has_user_flags {
-    argv.push(if debug_mode { "-Og" } else { "-O2" })
+    argv.push("-O2")
   }
   argv.push(stub)
   for f in cc_flags {
@@ -190,19 +181,14 @@ fn render_build_objc_stub(
   stub : String,
   cc_flags : Array[String],
   cpp : Bool,
-  debug_info : Bool,
-  debug_mode : Bool,
 ) -> @core.Command {
   let has_user_flags = !cc_flags.is_empty()
   let argv = [cc, "-o", out, "-I" + include_dir]
-  if debug_info {
-    argv.push("-g")
-  }
   argv.push("-c")
   argv.push("-fwrapv")
   argv.push("-fno-strict-aliasing")
   if !has_user_flags {
-    argv.push(if debug_mode { "-Og" } else { "-O2" })
+    argv.push("-O2")
   }
   // `-x <lang>` must precede the source file it applies to.
   argv.push("-x")
@@ -243,19 +229,13 @@ fn render_make_executable(
   cc_flags : Array[String],
   cc_link_flags : Array[String],
   link_flags : Array[String],
-  debug_info : Bool,
-  debug_mode : Bool,
-  gen_dsym : Bool,
 ) -> @core.Command {
   let has_user_flags = !cc_flags.is_empty()
   let parts = [cc, "-o", out, "-I" + include_dir]
-  if debug_info {
-    parts.push("-g")
-  }
   parts.push("-fwrapv")
   parts.push("-fno-strict-aliasing")
   if !has_user_flags {
-    parts.push(if debug_mode { "-Og" } else { "-O2" })
+    parts.push("-O2")
   }
   // The prebuilt runtime object goes FIRST (before the generated `.c`), matching
   // upstream `moon`; without it the macOS linker segfaults (GNU ld tolerates the
@@ -289,31 +269,5 @@ fn render_make_executable(
   for f in link_flags {
     parts.push(f)
   }
-  if gen_dsym {
-    // macOS: the clang driver does not reliably auto-run `dsymutil` on a
-    // combined compile+link, so emit the `<exe>.dSYM` bundle explicitly (the
-    // panic runtime's libbacktrace reads it to symbolicate). Run as a shell
-    // sequence. The driver head is expanded first (`zig cc` → `zig cc`, two argv
-    // tokens — quoting it whole would make the shell seek a program literally
-    // named "zig cc"); every token is then double-quoted so paths with spaces
-    // survive. `dsymutil` is invoked by ABSOLUTE path: a `zig cc` toolchain need
-    // not carry one, but `/usr/bin/dsymutil` (a shim over the active Xcode) is
-    // always present on macOS.
-    let toks = parts
-    let sb = StringBuilder()
-    for i, p in toks {
-      if i != 0 {
-        sb.write_string(" ")
-      }
-      sb.write_string("\"")
-      sb.write_string(p)
-      sb.write_string("\"")
-    }
-    sb.write_string(" && /usr/bin/dsymutil \"")
-    sb.write_string(out)
-    sb.write_string("\"")
-    @core.Shell(command=sb.to_string(), cwd=None)
-  } else {
-    cc_exec(parts)
-  }
+  cc_exec(parts)
 }

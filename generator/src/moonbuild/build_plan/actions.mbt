@@ -348,11 +348,9 @@ fn link_core_action(
   for _std_virtual_fqn, impl_pkg_id in std_overrides {
     add_pkg_core(@pkg_solve.BuildTarget::primary(impl_pkg_id))
   }
-  // Source maps are byproducts of debug Wasm/JS links.
-  let outputs = if emits_source_map(cfg) { [exe, exe + ".map"] } else { [exe] }
   {
     primary_output: exe,
-    outputs,
+    outputs: [exe],
     inputs,
     spec: @core.LinkCore(
       std_bundle=if std_abort_overridden {

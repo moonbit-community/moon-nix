@@ -37,7 +37,6 @@ fn runtime_actions(
         include_dir=nc.include_dir(),
         runtime_c=src,
         simdutf~,
-        debug_info=!cfg.strip,
       ),
     })
   }
@@ -97,8 +96,6 @@ fn cstub_action(
       include_dir=nc.include_dir(),
       stub~,
       cc_flags~,
-      debug_info=!cfg.strip,
-      debug_mode=cfg.mode is Debug,
     ),
   }
 }
@@ -130,8 +127,6 @@ fn objcstub_action(
       stub~,
       cc_flags=split_words(native_link.bind(fn(n) { n.stub_cc_flags })),
       cpp~,
-      debug_info=!cfg.strip,
-      debug_mode=cfg.mode is Debug,
     ),
   }
 }
@@ -308,29 +303,9 @@ fn make_exec_action(
   for f in stub_link_flags {
     cc_link_flags.push(f)
   }
-  // macOS debug info lives OUTSIDE the executable in an `<exe>.dSYM` bundle that
-  // `dsymutil` produces next to the binary; the panic runtime's libbacktrace reads
-  // it to symbolicate (without it a panic prints "no debug info" instead of a stack
-  // trace). The clang driver does NOT reliably auto-run `dsymutil` on a combined
-  // compile+link (the GitHub macOS runners' clang doesn't), so we run it explicitly
-  // (`gen_dsym`) and declare the resulting bundle files as outputs so they are
-  // cached/restored. Only a debug native link on macOS emits dSYM output.
-  let gen_dsym = @os.os_kind() is Macos &&
-    cfg.backend is Native(_) &&
-    cfg.mode is Debug &&
-    true
-  let outputs : Array[String] = if gen_dsym {
-    [
-      out,
-      out + ".dSYM/Contents/Info.plist",
-      out + ".dSYM/Contents/Resources/DWARF/" + last_seg(out),
-    ]
-  } else {
-    [out]
-  }
   {
     primary_output: out,
-    outputs,
+    outputs: [out],
     inputs,
     spec: @core.MakeExecutable(
       cc~,
@@ -344,9 +319,6 @@ fn make_exec_action(
       cc_flags=split_words(native_link.bind(fn(n) { n.cc_flags })),
       cc_link_flags~,
       link_flags~,
-      debug_info=!cfg.strip,
-      debug_mode=cfg.mode is Debug,
-      gen_dsym~,
     ),
   }
 }

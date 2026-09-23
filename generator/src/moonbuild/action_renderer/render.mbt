@@ -78,15 +78,6 @@ pub fn render_command(
       }
       parts.push("-target")
       parts.push(env.target)
-      if env.debug_symbols {
-        parts.push("-g")
-      }
-      if env.mode == "debug" {
-        parts.push("-O0")
-      }
-      if env.debug_symbols && env.target != "native" && env.target != "llvm" {
-        parts.push("-source-map")
-      }
       // A virtual default implementation must not overwrite its interface action
       // output with another `.mi`.
       if no_mi {
@@ -209,15 +200,6 @@ pub fn render_command(
       }
       parts.push("-target")
       parts.push(env.target)
-      if env.debug_symbols {
-        parts.push("-g")
-      }
-      if env.mode == "debug" {
-        parts.push("-O0")
-      }
-      if env.debug_symbols && env.target != "native" && env.target != "llvm" {
-        parts.push("-source-map")
-      }
       if exported_functions.length() > 0 {
         parts.push("-exported_functions=" + exported_functions.join(","))
       }
@@ -300,62 +282,16 @@ pub fn render_command(
     @core.Prebuild(command~, module_root~, ..) =>
       @core.Shell(command~, cwd=Some(module_root))
     // Native C-toolchain command construction lives in `render_native.mbt`.
-    @core.BuildRuntime(cc~, include_dir~, runtime_c~, simdutf~, debug_info~) =>
-      render_build_runtime(
-        act.primary_output,
-        cc,
-        include_dir,
-        runtime_c,
-        simdutf,
-        debug_info,
-      )
-    @core.BuildCStub(
-      cc~,
-      include_dir~,
-      stub~,
-      cc_flags~,
-      debug_info~,
-      debug_mode~
-    ) =>
-      render_build_cstub(
-        act.primary_output,
-        cc,
-        include_dir,
-        stub,
-        cc_flags,
-        debug_info,
-        debug_mode,
-      )
+    @core.BuildRuntime(cc~, include_dir~, runtime_c~, simdutf~) =>
+      render_build_runtime(act.primary_output, cc, include_dir, runtime_c, simdutf)
+    @core.BuildCStub(cc~, include_dir~, stub~, cc_flags~) =>
+      render_build_cstub(act.primary_output, cc, include_dir, stub, cc_flags)
     @core.BuildZigStub(zig~, include_dir~, stub~, modules~, target~) =>
-      render_build_zig_stub(
-        act.primary_output,
-        zig,
-        include_dir,
-        stub,
-        modules,
-        target,
-      )
+      render_build_zig_stub(act.primary_output, zig, include_dir, stub, modules, target)
     @core.TranslateC(zig~, include_dir~, header~) =>
       render_translate_c(act.primary_output, zig, include_dir, header)
-    @core.BuildObjcStub(
-      cc~,
-      include_dir~,
-      stub~,
-      cc_flags~,
-      cpp~,
-      debug_info~,
-      debug_mode~
-    ) =>
-      render_build_objc_stub(
-        act.primary_output,
-        cc,
-        include_dir,
-        stub,
-        cc_flags,
-        cpp,
-        debug_info,
-        debug_mode,
-      )
+    @core.BuildObjcStub(cc~, include_dir~, stub~, cc_flags~, cpp~) =>
+      render_build_objc_stub(act.primary_output, cc, include_dir, stub, cc_flags, cpp)
     @core.ArchiveCStubs(ar~, objs~) =>
       render_archive_cstubs(act.primary_output, ar, objs)
     @core.MakeExecutable(
@@ -369,10 +305,7 @@ pub fn render_command(
       libs~,
       cc_flags~,
       cc_link_flags~,
-      link_flags~,
-      debug_info~,
-      debug_mode~,
-      gen_dsym~
+      link_flags~
     ) =>
       render_make_executable(
         act.primary_output,
@@ -387,9 +320,6 @@ pub fn render_command(
         cc_flags,
         cc_link_flags,
         link_flags,
-        debug_info,
-        debug_mode,
-        gen_dsym,
       )
   }
 }

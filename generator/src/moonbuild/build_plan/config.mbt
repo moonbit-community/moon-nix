@@ -164,27 +164,9 @@ pub fn Backend::parse(s : String) -> Backend {
 }
 
 ///|
-/// Build mode.
-pub(all) enum Mode {
-  Debug
-  Release
-}
-
-///|
-pub fn Mode::name(self : Mode) -> String {
-  match self {
-    Debug => "debug"
-    Release => "release"
-  }
-}
-
-///|
 /// Knobs that shape the produced commands but are not part of the source tree.
 pub(all) struct BuildConfig {
   backend : Backend
-  mode : Mode
-  /// Debug symbols are independent of the optimization profile.
-  strip : Bool
   target_platform : @os.Platform
   out_dir : String
   /// A module bundle uses paths relative to this module; ordinary builds include the module name.
@@ -271,8 +253,6 @@ pub fn Plan::env(self : Plan) -> @core.BuildEnv {
 pub fn build_env(cfg : BuildConfig) -> @core.BuildEnv {
   {
     target: cfg.backend.name(),
-    mode: cfg.mode.name(),
-    debug_symbols: !cfg.strip,
   }
 }
 

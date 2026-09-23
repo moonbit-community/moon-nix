@@ -1,5 +1,5 @@
 // Compile-input resolution: interpret the discovered facts (source files,
-// imports, conditional `targets`) against the active backend/mode. This is the
+// imports, conditional `targets`) against the selected backend in release mode. This is the
 // layer `discover` deliberately deferred — it gathered facts without filtering;
 // here they are filtered and resolved for a concrete compile.
 
@@ -104,7 +104,7 @@ fn is_test_file(name : String) -> Bool {
 /// conditional compilation, in precedence order:
 ///
 ///  1. An explicit `targets:` entry in `moon.pkg` is authoritative — the file
-///     compiles iff its cond-expr holds for (cfg.target, Release). This is how
+///     compiles iff its cond-expr holds for the selected backend in release mode. This is how
 ///     conditional sources are kept apart so they don't collide (e.g. two files
 ///     declaring the same type for different backends).
 ///  2. A recognized backend suffix in the FILENAME (`timer.js.mbt`) gates the file
@@ -124,7 +124,7 @@ fn target_excludes(
 ) -> Bool {
   match pkg.targets.get(last_seg(file)) {
     Some(expr) =>
-      return !@config.cond_eval(expr, cfg.backend.name(), cfg.mode.name())
+      return !@config.cond_eval(expr, cfg.backend.name(), "release")
     None => ()
   }
   match filename_backend(file) {

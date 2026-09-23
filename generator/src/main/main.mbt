@@ -93,7 +93,7 @@ fn export_plan() -> Unit raise {
   }
   let resolved = match index_dir {
     Some(path) => resolve_plan_sources(root, dirs, path)
-    None => ResolvedPlanSources::{ metadata: Json::null(), edges: Map([]) }
+    None => ResolvedPlanSources::{ metadata: Json::null(), edges: Map([]), }
   }
   let packages = @discover.discover_modules(dirs, module_edges=resolved.edges)
   // Opaque prebuild scripts run during planning. Reject them BEFORE
@@ -114,8 +114,6 @@ fn export_plan() -> Unit raise {
   }
   let cfg : @build_plan.BuildConfig = {
     backend,
-    mode: @build_plan.Release,
-    strip: true,
     target_platform: @os.Platform::host(),
     out_dir: "/__moon2nix_build",
     bundle_of: if is_bundle {
@@ -186,7 +184,8 @@ fn export_plan() -> Unit raise {
         }
       }
     }
-    let command : Json = match @action_renderer.render_command(action, plan.env()) {
+    let command : Json = match
+      @action_renderer.render_command(action, plan.env()) {
       @core.Exec(argv~, cwd~) =>
         {
           "kind": "exec",

@@ -89,16 +89,13 @@ pub(all) enum ActionSpec {
     cc~ : String,
     include_dir~ : String,
     runtime_c~ : String,
-    simdutf~ : Bool,
-    debug_info~ : Bool
+    simdutf~ : Bool
   )
   BuildCStub(
     cc~ : String,
     include_dir~ : String,
     stub~ : String,
-    cc_flags~ : Array[String],
-    debug_info~ : Bool,
-    debug_mode~ : Bool
+    cc_flags~ : Array[String]
   )
   BuildZigStub(
     zig~ : String,
@@ -113,9 +110,7 @@ pub(all) enum ActionSpec {
     include_dir~ : String,
     stub~ : String,
     cc_flags~ : Array[String],
-    cpp~ : Bool,
-    debug_info~ : Bool,
-    debug_mode~ : Bool
+    cpp~ : Bool
   )
   ArchiveCStubs(ar~ : String, objs~ : Array[String])
   MakeExecutable(
@@ -129,10 +124,7 @@ pub(all) enum ActionSpec {
     libs~ : Array[String],
     cc_flags~ : Array[String],
     cc_link_flags~ : Array[String],
-    link_flags~ : Array[String],
-    debug_info~ : Bool,
-    debug_mode~ : Bool,
-    gen_dsym~ : Bool
+    link_flags~ : Array[String]
   )
 }
 
@@ -140,8 +132,6 @@ pub(all) enum ActionSpec {
 /// Build profile shared by all commands in a plan.
 pub(all) struct BuildEnv {
   target : String
-  mode : String
-  debug_symbols : Bool
 }
 
 ///|
