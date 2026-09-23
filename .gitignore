@@ -2,3 +2,9 @@
 /generator/_build/
 /generator/.mooncakes/
 /generator/x
+/examples/
+/tests/
+/test-*.nix
+**/*_test.mbt
+**/*_wbtest.mbt
+**/test_*.mbt
