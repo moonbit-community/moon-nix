@@ -132,8 +132,7 @@ fn link_ext(cfg : BuildConfig) -> String {
   match cfg.backend {
     Js => ".js"
     Native(_) => ".c"
-    Llvm(Some(nc)) => obj_ext(nc)
-    Llvm(None) => ".o"
+    Llvm(_) => ".o"
     _ => ".wasm"
   }
 }

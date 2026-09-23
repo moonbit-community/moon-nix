@@ -76,8 +76,11 @@ derivation, including transitive `.mi` interfaces needed by `-all-pkgs`.
 Unrelated module roots are excluded from an action's source substitutions;
 source invalidation within a module is currently at module granularity.
 
-`buildPlan` accepts `name` and additional `nativeBuildInputs`. Its `passthru`
-exposes `actions` (by artifact ID) and `roots` for inspecting the graph.
+`buildPlan` accepts `name`, `stdenv`, and additional `nativeBuildInputs`. Native
+compilation uses the compiler provided by Nix's `stdenv`; the generator does not
+probe a compiler on the machine exporting the plan. For example, pass
+`stdenv = pkgs.clangStdenv;` to use Clang. Its `passthru` exposes `actions`
+(by artifact ID) and `roots` for inspecting the graph.
 
 ## Build a bundle
 

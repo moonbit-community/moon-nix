@@ -15,12 +15,12 @@ pub(all) struct StdConfig {
 ///|
 /// The native toolchain.
 pub(all) struct NativeToolchain {
-  cc : String //   the C compiler (cc / gcc)
+  cc : String // Nix supplies the C compiler as `cc`
   ar : String //   the archiver
   root : String // toolchain root; every file below derives from it
   // The `zig` driver for compiling `.zig` native stubs (`zig build-obj`), if one
-  // was found / configured (`MOON_ZIG` or probed off PATH). `None` when zig is
-  // absent — a plan referencing a `.zig` stub then raises `ZigToolchainMissing`
+  // is configured. `None` when Zig is unavailable — a plan referencing a
+  // `.zig` stub then raises `ZigToolchainMissing`
   // rather than silently skipping it. C-only builds never consult this.
   zig : String?
 }
@@ -87,9 +87,8 @@ pub fn NativeToolchain::runtime_sources(
 
 ///|
 /// `<root>/lib/{moonbit_simdutf,simdutf}.o` — prebuilt objects linked into the exe,
-/// iff the toolchain `can_use_simdutf` (gcc-style on a non-Windows host). Gated on
-/// the SAME `@cc` predicate as the `-DMOONBIT_USE_SIMDUTF` define so the object set
-/// and the define never disagree.
+/// when using the pre-split runtime. The generated C receives the matching
+/// `-DMOONBIT_USE_SIMDUTF` define.
 ///
 /// Empty on a split runtime: its `runtime/utf.c` CARRIES the simdutf glue, so the
 /// prebuilt objects would duplicate those symbols — and upstream stopped shipping
@@ -97,41 +96,22 @@ pub fn NativeToolchain::runtime_sources(
 pub fn NativeToolchain::extra_objs(self : NativeToolchain) -> Array[String] {
   if self.has_split_runtime() {
     []
-  } else if @cc.can_use_simdutf(self.cc) {
+  } else {
     [self.root + "/lib/moonbit_simdutf.o", self.root + "/lib/simdutf.o"]
-  } else {
-    []
   }
 }
 
 ///|
-/// `<root>/lib/libbacktrace.a` — linked into the exe iff the toolchain
-/// `can_use_stacktrace`. Gated on the SAME `@cc` predicate as the
-/// `-DMOONBIT_ALLOW_STACKTRACE` define.
+/// Stacktrace support on Linux and macOS links the toolchain's backtrace library.
 pub fn NativeToolchain::libs(self : NativeToolchain) -> Array[String] {
-  if @cc.can_use_stacktrace(self.cc) {
-    [self.root + "/lib/libbacktrace.a"]
-  } else {
-    []
-  }
+  [self.root + "/lib/libbacktrace.a"]
 }
 
 ///|
-/// `<root>/lib/libmoonbitrun.o` — the prebuilt MoonBit runtime object, linked into
-/// every native executable (FIRST, before the generated `.c`), exactly as upstream
-/// `moon` does (`is_libmoonbitrun_o_available`). `None` for msvc (not distributed on
-/// Windows). Omitting it links on GNU ld but makes the macOS system linker SEGFAULT,
-/// so it is required for a working macOS build.
+/// The prebuilt MoonBit runtime object, linked before generated C. macOS's
+/// linker requires this ordering.
 pub fn NativeToolchain::moonbitrun_o(self : NativeToolchain) -> String? {
-  // Also `None` for a Windows *target* (cross build): the prebuilt object is the
-  // host's and is not distributed for Windows anyway — the from-source `runtime.c`
-  // (compiled with the cross cc) is the whole runtime there, exactly as a native
-  // Windows (msvc) build.
-  if @cc.is_msvc(self.cc) || @cc.target_of(self.cc) is Windows {
-    None
-  } else {
-    Some(self.root + "/lib/libmoonbitrun.o")
-  }
+  Some(self.root + "/lib/libmoonbitrun.o")
 }
 
 ///|
@@ -310,10 +290,6 @@ pub suberror BuildPlanError {
   /// A package declares a `.zig` native stub but no `zig` driver was found
   /// (neither `MOON_ZIG` nor a `zig` on PATH) — the stub cannot be compiled.
   ZigToolchainMissing(package_name~ : String, stub~ : String)
-  /// A package declares an Objective-C (`.m`/`.mm`) native stub but the active C
-  /// compiler is not `clang` — only clang compiles Objective-C, so the stub
-  /// cannot be built with this toolchain (`cc` carries the offending driver).
-  ObjcRequiresClang(package_name~ : String, stub~ : String, cc~ : String)
   /// Internal build-plan invariant: the action map key must be the action's
   /// representative output. Without this, targets and artifact producer maps can
   /// disagree about which runnable action owns a path.

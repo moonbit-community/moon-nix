@@ -1,6 +1,5 @@
 import {
   "moon/moonbuild/core",
-  "moon/moonbuild/cc",
   "moon/util/pathx",
 }
 

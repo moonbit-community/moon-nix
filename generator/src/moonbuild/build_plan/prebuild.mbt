@@ -20,20 +20,18 @@ fn emit_prebuild_actions(
     let outs = rule.output.map(fn(p) { pkg.root_path + "/" + p })
     // `:embed …` is moon's built-in embed codegen — shorthand for the toolchain's
     // `moon tool embed …` (toolchain `moon` is on the sandbox PATH).
-    let command = resolve_windows_launcher(
-      resolve_relative_argv0(
-        rewrite_prebuild_builtins(
-          expand_vars(
-            rule.command,
-            pkg.root_path,
-            pkg.module_root,
-            ins,
-            outs,
-            mooncake_bin~,
-          ),
+    let command = resolve_relative_argv0(
+      rewrite_prebuild_builtins(
+        expand_vars(
+          rule.command,
+          pkg.root_path,
+          pkg.module_root,
+          ins,
+          outs,
+          mooncake_bin~,
         ),
-        pkg.module_root,
       ),
+      pkg.module_root,
     )
     // Key the action by its first output; the full output set is cached/restored
     // together because the command produces it atomically.
@@ -81,17 +79,8 @@ fn root_mooncake_bin(packages : @model.PackageTable) -> String {
 }
 
 ///|
-/// Resolve a RELATIVE `argv[0]` against the module root, mirroring the stock rust
-/// `moon` (build_plan/builders.rs): a pre-build command whose program is a
-/// project-relative path like `.mooncakes/__moonbin__/<tool>` is made absolute by
-/// prepending the module dir. We prefer this relative spelling over `$mooncake_bin`
-/// in `moon.pkg` because the stock `moon` only applies its Windows launcher fixup
-/// (resolve `<argv0>.ps1` + wrap in `powershell`) to a RELATIVE argv[0]; an
-/// already-absolute `$mooncake_bin/<tool>` skips that path and fails on Windows
-/// (`CreateProcessA` cannot run a `.ps1`). The resulting absolute command is
-/// byte-identical to the old `$mooncake_bin` expansion, so execution is
-/// unchanged. argv[0] tokens with no separator (`moon`,
-/// `node`) or already absolute are left untouched.
+/// Resolve a project-relative command path against its module root. Bare
+/// executable names continue to resolve through the Nix build environment.
 fn resolve_relative_argv0(command : String, mod_dir : String) -> String {
   let (argv0, rest) = match command.split_once(" ") {
     Some((a, r)) => (a.to_owned(), " " + r.to_owned())
@@ -108,48 +97,6 @@ fn resolve_relative_argv0(command : String, mod_dir : String) -> String {
       None => argv0
     }
     mod_dir + "/" + rel + rest
-  } else {
-    command
-  }
-}
-
-///|
-/// Windows does not execute Unix-style extensionless launcher scripts. Rust moon
-/// resolves a pre-build command's program token to the real launcher before
-/// spawning it; do the same here for shell pre-builds so both `$mooncake_bin/foo`
-/// and `$mod_dir/.mooncakes/.../foo` work when the installed file is `foo.cmd`,
-/// `foo.exe`, `foo.bat`, or `foo.ps1`.
-fn resolve_windows_launcher(command : String) -> String {
-  guard @os.os_kind() is Windows else { return command }
-  let (argv0, rest) = match command.split_once(" ") {
-    Some((a, r)) => (a.to_owned(), " " + r.to_owned())
-    None => (command, "")
-  }
-  let looks_like_path = argv0.split_once("/") is Some(_) ||
-    argv0.split_once("\\") is Some(_)
-  guard looks_like_path else { return command }
-  if argv0.has_suffix(".ps1") && @os.exists(argv0) {
-    return "powershell -NoProfile -ExecutionPolicy Bypass -File " + argv0 + rest
-  }
-  if (
-      argv0.has_suffix(".cmd") ||
-      argv0.has_suffix(".exe") ||
-      argv0.has_suffix(".bat")
-    ) &&
-    @os.exists(argv0) {
-    return command
-  }
-  for ext in [".cmd", ".exe", ".bat"] {
-    let candidate = argv0 + ext
-    if @os.exists(candidate) {
-      return candidate + rest
-    }
-  }
-  let ps1 = argv0 + ".ps1"
-  if @os.exists(ps1) {
-    "powershell -NoProfile -ExecutionPolicy Bypass -File " + ps1 + rest
-  } else if @os.exists(argv0) {
-    command
   } else {
     command
   }

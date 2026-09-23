@@ -1,7 +1,6 @@
 import {
   "moon/moonbuild/analysis/model",
   "moon/moonbuild/analysis/pkg_solve",
-  "moon/moonbuild/cc",
   "moon/moonbuild/core",
   "moon/mooncake/config",
   "moon/util/os",

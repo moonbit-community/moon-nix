@@ -123,7 +123,7 @@ fn build_core_action(
       no_mi~,
       warn_list=effective_warn_list(pkg),
       alert_list=pkg.alert_list,
-      compile_flags=[..pkg.compile_flags, ..platform_cfg(cfg)],
+      compile_flags=pkg.compile_flags,
     ),
   }
 }
@@ -286,7 +286,7 @@ fn sub_core_action(
       no_mi=false,
       warn_list=effective_warn_list(pkg),
       alert_list=pkg.alert_list,
-      compile_flags=[..pkg.compile_flags, ..platform_cfg(cfg)],
+      compile_flags=pkg.compile_flags,
     ),
   }
 }
@@ -375,24 +375,5 @@ fn link_core_action(
       link_flags=main_pkg.link_flags,
       // "New native": when set, link-core lowers to a `.o` for this host triple.
     ),
-  }
-}
-
-///|
-/// Cross-build `-cfg` flags for `moonc build-package`: when the native target OS
-/// is Windows (a cross build — `cc` carries `-target …-windows-…`), set
-/// `platform=windows` so `#cfg(platform=…)` code (e.g. moonbitlang/async) compiles
-/// the Windows OS paths to match the Windows-compiled C stubs. Without it moonc
-/// defaults `platform` to the host (the unix paths), which then fail to link
-/// against the cross-compiled C. Empty for a native (host) build — unchanged.
-fn platform_cfg(cfg : BuildConfig) -> Array[String] {
-  match cfg.backend {
-    Native(Some(nc)) | Llvm(Some(nc)) =>
-      if @cc.target_of(nc.cc) is Windows {
-        ["-cfg", "platform=windows"]
-      } else {
-        []
-      }
-    _ => []
   }
 }

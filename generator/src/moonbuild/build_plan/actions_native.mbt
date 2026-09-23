@@ -2,35 +2,16 @@
 // `Native(Some(nc))`
 
 ///|
-/// The object-file extension for the C toolchain: `.obj` for MSVC `cl`, else `.o`.
-fn obj_ext(nc : NativeToolchain) -> String {
-  if @cc.is_msvc(nc.cc) {
-    ".obj"
-  } else {
-    ".o"
-  }
+/// Archive the `.o` stubs for a package.
+fn archive_path(cfg : BuildConfig, fqn : String) -> String {
+  @pathx.join([package_dir(cfg, fqn), "lib" + artifact_name(fqn) + ".a"])
 }
 
 ///|
-/// A C-stub archive path: `lib<pkg>.lib` for MSVC, `lib<pkg>.a` for GNU. The
-/// `lib` prefix is kept even on MSVC so the archive name can't collide with the
-/// import library `link` auto-generates for the exe (`<exe-stem>.lib`, since the
-/// moonbit runtime exports `__declspec(dllexport)` symbols) — that collision is
-/// LNK1149. The archiver, not the compiler, picks the extension (`lib` = MSVC).
-fn archive_path(
-  cfg : BuildConfig,
-  nc : NativeToolchain,
-  fqn : String,
-) -> String {
-  let ext = if @cc.is_msvc_lib(nc.ar) { ".lib" } else { ".a" }
-  @pathx.join([package_dir(cfg, fqn), "lib" + artifact_name(fqn) + ext])
-}
-
-///|
-/// `cc`-compile the toolchain runtime sources into `.{o,obj}` objects — one action
+/// `cc`-compile the toolchain runtime sources into `.o` objects — one action
 /// per source. The legacy monolithic layout keeps the historical single
-/// `runtime.{o,obj}`; a split runtime (`<root>/lib/runtime/*.c`) mirrors upstream's
-/// per-source `runtime-<stem>.{o,obj}`.
+/// `runtime.o`; a split runtime (`<root>/lib/runtime/*.c`) mirrors upstream's
+/// per-source `runtime-<stem>.o`.
 fn runtime_actions(
   cfg : BuildConfig,
   nc : NativeToolchain,
@@ -39,13 +20,13 @@ fn runtime_actions(
   // define and `NativeToolchain::extra_objs`' prebuilt objects come from one
   // decision and cannot disagree.
   let split = nc.has_split_runtime()
-  let simdutf = !split && @cc.can_use_simdutf(nc.cc)
+  let simdutf = !split
   let acts : Array[@core.Action] = []
   for src in nc.runtime_sources() {
     let out = if split {
-      cfg.out_dir + "/runtime-" + @pathx.stem(src) + obj_ext(nc)
+      cfg.out_dir + "/runtime-" + @pathx.stem(src) + ".o"
     } else {
-      cfg.out_dir + "/runtime" + obj_ext(nc)
+      cfg.out_dir + "/runtime.o"
     }
     acts.push({
       primary_output: out,
@@ -86,7 +67,7 @@ fn cstub_action(
   native_link : @config.NativeLinkConfig?,
 ) -> @core.Action {
   let out = @pathx.join([package_dir(cfg, fqn), @pathx.stem(stub)]) +
-    obj_ext(nc)
+    ".o"
   let cc = effective_stub_cc(nc, native_link)
   let cc_flags = split_words(native_link.bind(fn(n) { n.stub_cc_flags }))
   // macOS C-stub portability shims, gated on the BUILD host (a native compile
@@ -126,7 +107,7 @@ fn cstub_action(
 /// `clang` one Objective-C (`.m`) / Objective-C++ (`.mm`) stub of a package into a
 /// `.o`, slotted into the same archive/link as a C stub. Honors the owning
 /// package's `stub-cc`/`stub-cc-flags` like `cstub_action` (the effective cc must
-/// be clang — the caller gates on that and raises `ObjcRequiresClang`). `cpp`
+/// be clang from the Darwin stdenv. `cpp`
 /// selects ObjC++ for `.mm`.
 fn objcstub_action(
   cfg : BuildConfig,
@@ -137,7 +118,7 @@ fn objcstub_action(
   cpp : Bool,
 ) -> @core.Action {
   let out = @pathx.join([package_dir(cfg, fqn), @pathx.stem(stub)]) +
-    obj_ext(nc)
+    ".o"
   let cc = effective_stub_cc(nc, native_link)
   {
     primary_output: out,
@@ -158,7 +139,7 @@ fn objcstub_action(
 ///|
 /// The effective C compiler for a package's stubs: its `link.native.stub-cc`
 /// override if present, else the toolchain `cc`. Shared by `cstub_action` and the
-/// ObjC clang-gating in `build_plan`.
+/// Objective-C stub rendering.
 fn effective_stub_cc(
   nc : NativeToolchain,
   native_link : @config.NativeLinkConfig?,
@@ -188,20 +169,12 @@ fn zigstub_action(
   modules : Array[(String, String)],
 ) -> @core.Action {
   let out = @pathx.join([package_dir(cfg, fqn), @pathx.stem(stub)]) +
-    obj_ext(nc)
+    ".o"
   // Each translated module's `.zig` is a build input → its TranslateC action must
   // run first, and a re-translation re-builds this stub (digest picks it up).
   let inputs = [stub, ..modules.map(fn(m) { m.1 })]
-  // The zig stub must `build-obj` for the EXACT triple the C objects link with
-  // (`zig cc -target <triple>`), or the objects mismatch (different compiler-rt /
-  // ABI → unresolved `__chkstk_ms` etc. at link). Read the raw triple back off the
-  // cc — NOT via `target_of`, which collapses to an `OsKind` and would (a) pass
-  // `None` when the target OS equals the host even though the cc explicitly cross-
-  // ABIs (e.g. `x86_64-windows-msvc` on a Windows host), and (b) re-derive the
-  // triple through `zig_triple` and lose the exact ABI suffix (`-msvc`, `-gnu`, …).
-  // `None` (no
-  // `-target` in the cc) means a plain host build — zig's own default is correct.
-  let target = @cc.target_triple_of(nc.cc)
+  // Nix native builds use the host target for both C and Zig.
+  let target : String? = None
   {
     primary_output: out,
     outputs: [out],
@@ -218,7 +191,7 @@ fn zigstub_action(
 
 ///|
 /// Compile one native stub into a `.o`, dispatching by extension: `.zig` → `zig
-/// build-obj`, `.m`/`.mm` → `clang` (gated to a clang cc), everything else → `cc`.
+/// build-obj`, `.m`/`.mm` → the Darwin C compiler, everything else → `cc`.
 /// `zig_modules` are the package's translated C headers, when configured.
 fn stub_object_action(
   cfg : BuildConfig,
@@ -235,10 +208,6 @@ fn stub_object_action(
     }
     zigstub_action(cfg, nc, fqn, stub, zig, zig_modules)
   } else if stub.has_suffix(".m") || stub.has_suffix(".mm") {
-    let cc = effective_stub_cc(nc, native_link)
-    guard @cc.cc_kind(cc) is Clang else {
-      raise ObjcRequiresClang(package_name=fqn, stub~, cc~)
-    }
     objcstub_action(cfg, nc, fqn, stub, native_link, stub.has_suffix(".mm"))
   } else {
     cstub_action(cfg, nc, fqn, stub, native_link)
@@ -287,7 +256,7 @@ fn archive_action(
   fqn : String,
   objs : Array[String],
 ) -> @core.Action {
-  let out = archive_path(cfg, nc, fqn)
+  let out = archive_path(cfg, fqn)
   {
     primary_output: out,
     outputs: [out],
@@ -345,13 +314,11 @@ fn make_exec_action(
   // trace). The clang driver does NOT reliably auto-run `dsymutil` on a combined
   // compile+link (the GitHub macOS runners' clang doesn't), so we run it explicitly
   // (`gen_dsym`) and declare the resulting bundle files as outputs so they are
-  // cached/restored. Only a DEBUG clang link on a Native(C) backend emits debug
-  // info; gate precisely so the strict-commit guard never trips on a release / gcc
-  // / llvm-backend link (which produces no dSYM).
+  // cached/restored. Only a debug native link on macOS emits dSYM output.
   let gen_dsym = @os.os_kind() is Macos &&
     cfg.backend is Native(_) &&
     cfg.mode is Debug &&
-    @cc.cc_kind(cc) is Clang
+    true
   let outputs : Array[String] = if gen_dsym {
     [
       out,

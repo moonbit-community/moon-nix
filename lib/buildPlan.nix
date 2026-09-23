@@ -5,6 +5,8 @@
   sources,
   name ? "moon2nix-project",
   nativeBuildInputs ? [ ],
+  # Select the Nix C toolchain; for example pkgs.clangStdenv.
+  stdenv ? pkgs.stdenv,
   # A standard-library bundle built by another buildPlan call. The compiler and
   # native runtime still come from toolchain; only the bundled core is replaced.
   stdlib ? null,
@@ -33,7 +35,7 @@ let
     ) data.actions
     && (
       data.target != "native"
-      || data.platform == (if pkgs.stdenv.hostPlatform.isDarwin then "macos" else "linux")
+      || data.platform == (if stdenv.hostPlatform.isDarwin then "macos" else "linux")
     );
   producers = builtins.listToAttrs (
     lib.concatMap (
@@ -90,15 +92,18 @@ let
         }
       );
     in
-    pkgs.runCommand "moon2nix-${builtins.baseNameOf action.id}"
+    pkgs.runCommandWith
       {
-        nativeBuildInputs = [
-          toolchain
-          pkgs.python3
-          pkgs.stdenv.cc
-          pkgs.binutils
-        ]
-        ++ nativeBuildInputs;
+        inherit stdenv;
+        name = "moon2nix-${builtins.baseNameOf action.id}";
+        derivationArgs = {
+          nativeBuildInputs = [
+            toolchain
+            pkgs.python3
+            pkgs.binutils
+          ]
+          ++ nativeBuildInputs;
+        };
       }
       ''
         python ${./runAction.py} ${config}

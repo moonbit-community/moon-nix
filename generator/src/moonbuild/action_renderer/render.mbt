@@ -299,8 +299,7 @@ pub fn render_command(
     }
     @core.Prebuild(command~, module_root~, ..) =>
       @core.Shell(command~, cwd=Some(module_root))
-    // Native C-toolchain arms — the OS + compiler-kind (MSVC / gcc-style)
-    // branching lives in `render_native.mbt` (see `render_*` there).
+    // Native C-toolchain command construction lives in `render_native.mbt`.
     @core.BuildRuntime(cc~, include_dir~, runtime_c~, simdutf~, debug_info~) =>
       render_build_runtime(
         act.primary_output,

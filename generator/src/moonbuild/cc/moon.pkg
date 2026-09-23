@@ -1,9 +1,0 @@
-// C-toolchain knowledge for the native backend: driver-kind predicates plus the
-// capability predicates (`can_use_simdutf` / `can_use_stacktrace` / `should_link_libm`)
-// that fold the host-OS + driver-kind rules the command renderer used to hard-code. Imports
-// `os` for the host-OS query.
-import {
-  "moon/util/os",
-}
-
-supported_targets = "native"

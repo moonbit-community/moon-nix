@@ -15,8 +15,7 @@ pub fn eprintln(s : String) -> Unit {
 }
 
 ///|
-/// The host operating-system family, resolved at COMPILE time in the C stub
-/// (`#ifdef _WIN32` / `__APPLE__`) — never sniffed from env vars or `uname`.
+/// The host OS reported by `moonbitlang/x/os`.
 pub(all) enum OsKind {
   Linux
   Macos
@@ -49,168 +48,45 @@ pub fn OsKind::parse(s : String) -> OsKind? {
 }
 
 ///|
-/// The C toolchain / ABI axis of a target platform. It matters mainly on Windows,
-/// where `Gnu` (mingw-w64) and `Msvc` are incompatible ABIs needing different link
-/// flags; other OSes have one mainstream toolchain today and ignore it. `None` in a
-/// [`Platform`] means "the OS default" — on Windows that is `Gnu` (mingw-w64),
-/// which zig bundles, so a cross build needs no external SDK.
-pub(all) enum Toolchain {
-  Gnu
-  Msvc
-} derive(Eq)
-
-///|
-pub extend Toolchain with Eq::{not_equal, equal}
-
-///|
-/// Parse a toolchain name (the `-<toolchain>` part of `--platform windows-gnu`).
-fn Toolchain::parse(s : String) -> Toolchain? {
-  match s {
-    "gnu" | "mingw" => Some(Gnu)
-    "msvc" => Some(Msvc)
-    _ => None
-  }
-}
-
-///|
-/// A target platform: an OS plus an optional toolchain/ABI override. This is the
-/// canonical descriptor of what a native build targets (the thing `--platform`
-/// selects); `toolchain = None` means the OS default. The architecture is implied
-/// by the OS (mymoon's native backend is x86_64 on Linux/Windows, arm64 on macOS),
-/// so it is derived in [`zig_triple`] rather than carried as a dead field.
+/// Host platform used to evaluate conditional imports and label plans.
 pub(all) struct Platform {
   os : OsKind
-  toolchain : Toolchain?
 } derive(Eq)
 
 ///|
 pub extend Platform with Eq::{not_equal, equal}
 
 ///|
-/// The host platform (OS default toolchain). A native build whose `Platform`
-/// equals this needs no cross toolchain.
 pub fn Platform::host() -> Platform {
-  { os: os_kind(), toolchain: None, }
+  { os: os_kind() }
 }
 
 ///|
-/// Parse a `--platform` value `<os>[-<toolchain>]` (e.g. `linux`, `windows`,
-/// `windows-gnu`, `windows-msvc`). `None` for an unrecognized value.
+/// Only Linux and macOS targets are supported by this exporter.
 pub fn Platform::parse(s : String) -> Platform? {
-  match s.split_once("-") {
-    // `<os>-<toolchain>`, e.g. windows-gnu.
-    Some((os_s, tc_s)) =>
-      match
-        (OsKind::parse(os_s.to_owned()), Toolchain::parse(tc_s.to_owned())) {
-        (Some(os), Some(tc)) => Some({ os, toolchain: Some(tc), })
-        // Not an os-toolchain pair → try the whole string as a bare OS.
-        _ =>
-          match OsKind::parse(s) {
-            Some(os) => Some({ os, toolchain: None, })
-            None => None
-          }
-      }
-    None =>
-      match OsKind::parse(s) {
-        Some(os) => Some({ os, toolchain: None, })
-        None => None
-      }
+  match OsKind::parse(s) {
+    Some(Linux) => Some({ os: Linux })
+    Some(Macos) => Some({ os: Macos })
+    _ => None
   }
 }
 
 ///|
-/// A short, filesystem-safe tag for this platform, for keying the `_build` tree so
-/// cross builds to different platforms don't share `.core`/`.o` paths. The default
-/// ABI is resolved (Windows → `gnu`), so `windows` and `windows-gnu` map to one
-/// dir. Examples: `linux`, `macos`, `windows-gnu`, `windows-msvc`.
 pub fn Platform::tag(self : Platform) -> String {
-  let os = match self.os {
-    Windows => "windows"
-    Macos => "macos"
-    Linux => "linux"
-  }
-  let abi = match self.toolchain {
-    Some(Gnu) => "gnu"
-    Some(Msvc) => "msvc"
-    None =>
-      match self.os {
-        Windows => "gnu" // the resolved default ABI on Windows
-        _ => ""
-      }
-  }
-  if abi == "" {
-    os
-  } else {
-    os + "-" + abi
-  }
-}
-
-///|
-/// Whether this (the active build platform) satisfies a platform condition. The
-/// OS must match; a condition toolchain must match the active ABI
-/// (the default ABI being `Gnu` — mingw on Windows, glibc on Linux), while a
-/// condition with no toolchain constrains only the OS.
-pub fn Platform::matches(self : Platform, cond : Platform) -> Bool {
-  if self.os != cond.os {
-    return false
-  }
-  match cond.toolchain {
-    None => true
-    Some(tc) => {
-      let active = match self.toolchain {
-        Some(t) => t
-        None => Gnu
-      }
-      active == tc
-    }
-  }
-}
-
-///|
-/// The `x86_64`/`arm64` zig/clang target triple for this platform, for `zig cc
-/// -target` / `zig build-obj -target` cross compilation. The Windows ABI suffix
-/// honors the toolchain: `Gnu` → `-gnu` (mingw-w64; ships its own headers/import
-/// libs), else `-msvc` (the default — the ABI a native Windows build uses and the
-/// only one moonbitlang/async supports; needs the MSVC SDK supplied out-of-band via
-/// `xwin`/`ZIG_LIBC`).
-pub fn Platform::zig_triple(self : Platform) -> String {
   match self.os {
-    Windows =>
-      match self.toolchain {
-        // Default (and explicit Gnu) = mingw-w64: zig BUNDLES its headers + import
-        // libs, so a cross build works out of the box with no SDK download. Msvc
-        // must be asked for explicitly — its ABI needs the MSVC SDK supplied
-        // out-of-band (xwin + ZIG_LIBC), so it is a poor zero-config default.
-        Some(Gnu) | None => "x86_64-windows-gnu"
-        Some(Msvc) => "x86_64-windows-msvc"
-      }
-    // MoonBit's native backend targets arm64 macOS only (no x86_64 macOS).
-    Macos => "aarch64-macos"
-    Linux => "x86_64-linux-gnu"
+    Linux => "linux"
+    Macos => "macos"
+    Windows => "windows"
   }
 }
 
 ///|
-/// Run a program directly (argv, no shell), capturing stdout AND stderr merged
-/// into one stream (the `2>&1` fold, done without a shell). Returns
-/// (exit code, captured output).
-pub fn capture_argv(argv : Array[String]) -> (Int, String) {
-  if argv.is_empty() {
-    return (-1, "")
-  }
-  try {
-    let (code, output) = @unix/process.collect_output_merged(
-      argv[0],
-      argv[1:].to_owned(),
-    )
-    (legacy_exit_code(code), @encoding/utf8.decode_lossy(output[:]))
-  } catch {
-    _ => (-1, "")
-  }
+pub fn Platform::matches(self : Platform, cond : Platform) -> Bool {
+  self.os == cond.os
 }
 
 ///|
-/// Like [`capture_argv_split`] but with the child's STDIN redirected to read from
+/// Run a program with its STDIN redirected to read from
 /// `stdin_path` (a file). For running an `__moonbit_unstable_prebuild` script: it is
 /// fed the JSON payload on fd 0 instead of inheriting our stdin, so a script that
 /// reads fd 0 cannot block on an interactive TTY. Returns `(exit, stdout, stderr)`.
