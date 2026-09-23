@@ -120,22 +120,6 @@ pub fn stem(name : String) -> String {
 }
 
 ///|
-/// Rewrite OS path separators (`\`) to `/`. Needed when feeding a Windows path
-/// (whose cwd prefix comes back with `\` from getcwd) to a consumer that only
-/// accepts `/`, e.g. moonc's `package.json` listing, where a raw `\` is an
-/// invalid JSON escape.
-///
-/// # Example
-/// ```mbt check
-/// test {
-///   inspect(@pathx.to_slash("C:\\Users\\x/foo"), content="C:/Users/x/foo")
-/// }
-/// ```
-pub fn to_slash(path : String) -> String {
-  path.replace_all(old="\\", new="/")
-}
-
-///|
 /// If `path` is under directory `base`, return the part after `base/`; else
 /// `None`. A cheap prefix-based relativize against a known parent — unlike a full
 /// `..`-aware `relative`.

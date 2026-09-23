@@ -52,36 +52,6 @@ pub(all) struct MoonMod {
 pub extend MoonMod with @moonbitlang/core/debug.Debug::{to_repr}
 
 ///|
-/// The typed `moon.work` workspace manifest: the member module directories
-/// (paths relative to the workspace root) developed together. A member overrides
-/// any registry dependency of the same module name with its local source.
-pub(all) struct MoonWork {
-  members : Array[String]
-  // Workspace-wide default backend, used when neither `--target` nor a member's
-  // own `moon.mod` `preferred-target` selects one. `None` ⇒ fall through to the
-  // command default. Both hyphen/underscore spellings accepted (as for moon.mod).
-  preferred_target : String?
-}
-
-///|
-/// Decode a `moon.work` manifest. `members` is a string array (the only required
-/// field); `preferred-target` is an optional workspace-wide default backend.
-pub fn decode_work(dsl : Array[(String, Value)]) -> MoonWork raise DecodeError {
-  let members : Array[String] = []
-  let mut preferred_target : String? = None
-  for entry in dsl {
-    let (key, v) = entry
-    match key {
-      "members" => members.append(as_string_array("members", v))
-      "preferred-target" | "preferred_target" =>
-        preferred_target = Some(as_backend("preferred-target", v))
-      _ => () // ignore unknown
-    }
-  }
-  { members, preferred_target }
-}
-
-///|
 /// A declared module dependency.
 ///   - `Registry` — the ONLY form a `moon.mod` can declare, written as
 ///     `"name@1.2.3"` in the `import { ... }` block (exact version).

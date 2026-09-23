@@ -3,7 +3,7 @@
 // parser library (it sits at the bottom of `resolve`, so a downloaded dependency
 // would be a chicken-and-egg) and no codegen — the grammar is tiny and fixed.
 import {
-  "moon/util/config",
+  "moon/mooncake/config",
   "moon/util/os",
   "moonbitlang/core/json",
   "moonbitlang/core/string",

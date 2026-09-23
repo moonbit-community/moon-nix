@@ -1,9 +1,9 @@
 import {
   "moon/moonbuild/analysis/model",
   "moon/moonbuild/analysis/pkg_solve",
-  "moon/util/cc",
+  "moon/moonbuild/cc",
   "moon/moonbuild/core",
-  "moon/util/config",
+  "moon/mooncake/config",
   "moon/util/os",
   "moon/util/pathx",
   "moonbitlang/core/json",

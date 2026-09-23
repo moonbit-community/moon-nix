@@ -327,13 +327,3 @@ pub fn parse_mod(input : String) -> Array[(String, @config.Value)]? {
 pub fn parse_pkg(input : String) -> Array[(String, @config.Value)]? {
   parse_dsl(input, false)
 }
-
-///|
-/// Parse a single value (used by callers that read one `@config.Value` from text).
-pub fn parse_value(input : String) -> @config.Value? {
-  guard tokenize(input) is Some(toks) else { return None }
-  let p = Parser::{ toks, pos: 0 }
-  guard p.parse_value() is Some(v) else { return None }
-  guard p.peek() == TEof else { return None }
-  Some(v)
-}

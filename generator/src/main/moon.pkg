@@ -1,7 +1,7 @@
 import {
   "moon/util/os",
-  "moon/util/config",
-  "moon/util/parse",
+  "moon/mooncake/config",
+  "moon/mooncake/parse",
   "moon/mooncake/mvs",
   "moon/moonbuild/analysis/discover",
   "moon/moonbuild/analysis/pkg_solve",

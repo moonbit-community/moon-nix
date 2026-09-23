@@ -1,5 +1,5 @@
 // Logical path-string utilities: POSIX-only basename/dirname/join + extension
-// manipulation + OS-separator normalization. Pure `moonbitlang/core` String API,
+// manipulation. Pure `moonbitlang/core` String API,
 // backend-agnostic.
 //
 // These operate on LOGICAL names (module/package paths, artifact stems) which are

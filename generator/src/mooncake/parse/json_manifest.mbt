@@ -82,24 +82,6 @@ pub fn has_mod(dir : String) -> Bool {
 }
 
 ///|
-/// Load the workspace manifest `moon.work` from `dir`. `None` if absent or it
-/// doesn't parse. It is a simple key-value manifest, so it reuses the module DSL
-/// parser.
-pub fn load_work(dir : String) -> Array[(String, @config.Value)]? {
-  let dsl = dir + "/moon.work"
-  if @os.exists(dsl) {
-    return parse_mod(@os.read_file(dsl))
-  }
-  None
-}
-
-///|
-/// Whether `dir` holds the workspace manifest `moon.work`.
-pub fn has_work(dir : String) -> Bool {
-  @os.exists(dir + "/moon.work")
-}
-
-///|
 /// Whether `dir` holds a package manifest (DSL or JSON).
 pub fn has_pkg(dir : String) -> Bool {
   @os.exists(dir + "/moon.pkg") || @os.exists(dir + "/moon.pkg.json")

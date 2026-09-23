@@ -372,41 +372,21 @@ pub(all) enum DirEntry {
 /// List the immediate children of a directory (names only, not recursive).
 /// `.` and `..` are excluded; an unreadable directory yields an empty list.
 pub fn list_dir(path : String) -> Array[DirEntry] {
-  if path.contains("\u{0}") {
-    return []
-  }
-  let status = FixedArray::make(1, 0)
-  let raw = native_list_dir(@encoding/utf8.encode(path[:]), status)
-  if status[0] != 0 {
-    return []
+  let names = @unix/fs.readdir(path) catch {
+    _ => return []
   }
   let entries : Array[DirEntry] = []
-  let mut cursor = 0
-  while cursor < raw.length() {
-    let kind = raw[cursor]
-    let name_start = cursor + 1
-    let mut name_end = name_start
-    while name_end < raw.length() && raw[name_end] != b'\x00' {
-      name_end += 1
+  for name in names {
+    let kind = @unix/fs.kind(path + "/" + name) catch {
+      _ => @unix/fs.Unknown
     }
-    if name_end == raw.length() {
-      return []
-    }
-    let name = @encoding/utf8.decode_lossy(raw[name_start:name_end])
     entries.push(
       match kind {
-        b'd' => Dir(name)
-        b'f' => File(name)
+        @unix/fs.Directory => Dir(name)
+        @unix/fs.Regular => File(name)
         _ => Other(name)
       },
     )
-    cursor = name_end + 1
   }
   entries
 }
-
-///|
-// POSIX follows links; Windows classifies from directory-entry attributes,
-// including non-symlink reparse points such as cloud placeholders.
-#borrow(path, status)
-extern "c" fn native_list_dir(path : Bytes, status : FixedArray[Int]) -> Bytes = "moon_os_list_dir"

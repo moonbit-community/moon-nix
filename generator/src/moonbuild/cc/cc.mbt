@@ -1,8 +1,7 @@
 // C-toolchain knowledge for the native backend: which `cc`/`ar` driver this is,
-// and (eventually) the flags/commands each kind needs. moonbuild-scoped on
-// purpose — only the native build path uses it (`moonbuild/action_renderer` renders the C
-// commands, `build_plan` computes the `.o`/`.a`/exe paths), so it does
-// NOT belong in the global `util/`.
+// and (eventually) the flags/commands each kind needs. Only the native build
+// path uses it: `action_renderer` renders C commands and `build_plan` computes
+// the `.o`/`.a`/executable paths.
 //
 // This is the SEED of what upstream moon models in `compiler_flags.rs`: a `CC`
 // type carrying `CCKind` (Msvc/SystemCC/Gcc/Clang) + `ARKind` (MsvcLib/GnuAr/LlvmAr),

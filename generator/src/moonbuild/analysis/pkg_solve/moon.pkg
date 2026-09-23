@@ -1,6 +1,6 @@
 import {
   "moon/moonbuild/analysis/model",
-  "moon/util/config",
+  "moon/mooncake/config",
   "moon/util/os",
 }
 

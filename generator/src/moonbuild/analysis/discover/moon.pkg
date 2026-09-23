@@ -1,8 +1,8 @@
 import {
   "moon/moonbuild/analysis/model",
   "moon/util/os",
-  "moon/util/parse",
-  "moon/util/config",
+  "moon/mooncake/parse",
+  "moon/mooncake/config",
   "moon/util/pathx",
 }
 

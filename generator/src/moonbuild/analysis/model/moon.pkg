@@ -1,5 +1,5 @@
 import {
-  "moon/util/config",
+  "moon/mooncake/config",
   "moon/util/pathx",
 }
 
