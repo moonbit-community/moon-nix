@@ -13,7 +13,7 @@
 /// `abort`) ships as its own `<pkg>/<last>.core` next to the bundle instead,
 /// and `link-core` fronts it separately.
 pub fn bundle_plan(
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   deps_rel : @pkg_solve.DepRelationship,
   cfg : BuildConfig,
 ) -> Plan raise BuildPlanError {
@@ -22,7 +22,7 @@ pub fn bundle_plan(
   let roots : Array[@pkg_solve.BuildTarget] = []
   for pkg in packages.all_packages() {
     let @model.ModuleId(m) = pkg.module_id
-    if m == 0 {
+    if m == 0 && pkg.supports(cfg.backend.name()) {
       match packages.get_package_id_by_name(pkg.fqn) {
         Some(id) => roots.push(@pkg_solve.BuildTarget::primary(id))
         None => ()
@@ -33,8 +33,9 @@ pub fn bundle_plan(
     raise PackageNotFound(fqn="<root module has no packages>")
   }
   let order = build_target_closure(deps_rel, roots) // deps before dependents
+  gate_supported(packages, order, cfg)
   let actions : Map[String, @core.Action] = Map([])
-  add_compile_actions(packages, deps_rel, order, cfg, actions, check=false)
+  add_compile_actions(packages, deps_rel, order, cfg, actions)
 
   // The bundle's `.core` inputs: each root-module package's, in the topological
   // order `order` already carries (initializer order matters, like link-core).
@@ -44,14 +45,16 @@ pub fn bundle_plan(
   let cores : Array[String] = []
   let demand : Array[String] = []
   for bt in order {
-    guard bt.kind is Primary else { continue }
     let p = packages.get_package(bt.pkg)
     let @model.ModuleId(m) = p.module_id
     guard m == 0 else { continue }
     let fqn = p.fqn
+    // Every interface in this module is part of the reusable bundle, including
+    // sub-package interfaces. Dependency-module artifacts stay in their own actions.
+    demand.push(mi_path_t(cfg, fqn, bt.kind))
+    guard bt.kind is Primary else { continue }
     if p.is_virtual() {
       // The interface `.mi` always ships; the default impl's `.core` too.
-      demand.push(mi_path(cfg, fqn))
       if p.virtual_has_default {
         demand.push(core_path(cfg, fqn))
       }

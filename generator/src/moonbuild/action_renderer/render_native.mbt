@@ -1,6 +1,6 @@
 // Native C-toolchain command rendering: the BuildRuntime / BuildCStub /
 // BuildZigStub / ArchiveCStubs / MakeExecutable arms of `render_command`, split
-// out of executor.mbt because they carry ALL the OS + compiler-kind branching
+// out of render.mbt because they carry ALL the OS + compiler-kind branching
 // (MSVC `cl` / gcc-style). `render_command` just dispatches to these.
 // Mirrors the build_plan `actions.mbt` / `actions_native.mbt` split.
 
@@ -8,7 +8,7 @@
 /// Build a cc/zig `Exec` whose `argv[0]` may be a MULTI-WORD driver (`zig cc`,
 /// `zig build-obj`). Every render below assembles `argv` with the bare driver
 /// string at index 0; this expands that head into real argv tokens
-/// (`["zig","cc", …]`) so the no-shell executor spawns the program + its built-in
+/// (`["zig","cc", …]`) so the command runner invokes the program + its built-in
 /// subcommand correctly. A plain single-word driver passes through unchanged.
 fn cc_exec(argv : Array[String]) -> @core.Command {
   let head = @cc.cc_argv(argv[0])

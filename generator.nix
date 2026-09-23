@@ -1,12 +1,5 @@
 { pkgs, toolchain }:
 let
-  moon2nix = import ./default.nix { inherit pkgs toolchain; };
-  registry = moon2nix.buildCachedRegistry {
-    registryIndexSrc = ./generator/registry;
-    moonMod.deps = {
-      "moonbitlang/async" = "0.21.2";
-    };
-  };
   x = pkgs.fetchFromGitHub {
     owner = "moonbitlang";
     repo = "x";
@@ -34,8 +27,6 @@ pkgs.stdenv.mkDerivation {
     ln -s ${x} x
     export MOON_HOME=$TMPDIR/moon-home
     mkdir -p "$MOON_HOME"
-    cp -rL ${registry}/registry "$MOON_HOME/registry"
-    chmod -R u+w "$MOON_HOME"
     moon build src/main --target native --release
     runHook postBuild
   '';

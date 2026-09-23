@@ -1,6 +1,6 @@
 // C-toolchain knowledge for the native backend: which `cc`/`ar` driver this is,
 // and (eventually) the flags/commands each kind needs. moonbuild-scoped on
-// purpose — only the native build path uses it (`engine/executor` renders the C
+// purpose — only the native build path uses it (`moonbuild/action_renderer` renders the C
 // commands, `build_plan` computes the `.o`/`.a`/exe paths), so it does
 // NOT belong in the global `util/`.
 //
@@ -12,7 +12,7 @@
 // and classifies it by basename; the
 // capability predicates below (`can_use_simdutf`/`can_use_stacktrace`/
 // `should_link_libm`) are where the host-OS + driver-kind rules live, so the
-// executor (and `NativeToolchain`) ask "can this toolchain do X" instead of
+// command renderer (and `NativeToolchain`) ask "can this toolchain do X" instead of
 // branching on the OS themselves. `targets_apple_darwin` is NOT added yet — no
 // consumer needs it (macOS currently rides the generic non-Windows path); add it
 // when a macOS-specific flag actually diverges.
@@ -68,7 +68,7 @@ pub(all) enum CCKind {
 /// runs. A plain driver (`cc`, `/nix/store/.../bin/clang`) yields a single-element
 /// vector; a multi-word driver (`zig cc`) yields its leading tokens (`["zig","cc"]`)
 /// so the program and its built-in subcommand spawn correctly under the argv-first
-/// (no-shell) executor. Mirrors moon's shlex-splitting of `CC`; a compiler PATH that
+/// (no-shell) command runner. Mirrors moon's shlex-splitting of `CC`; a compiler PATH that
 /// itself contains spaces must therefore be wrapped (same caveat as moon).
 pub fn cc_argv(cc : String) -> Array[String] {
   let toks : Array[String] = []
@@ -135,22 +135,6 @@ pub fn classify_cc_banner(banner : String) -> CCKind {
 }
 
 ///|
-/// A STABLE, version-agnostic tag for `cc`'s native-cache identity. `zig cc`
-/// compiles like clang, but it also gets zig-only sanitizer/link flags, so it
-/// must not share cached objects or executables with a plain clang action.
-pub fn cc_kind_tag(cc : String) -> String {
-  if is_zig_cc(cc) {
-    "zig-clang"
-  } else {
-    match cc_kind(cc) {
-      Gcc => "gcc"
-      Clang => "clang"
-      Msvc => "msvc"
-    }
-  }
-}
-
-///|
 /// Whether `cc` is the `zig cc` (or `zig c++`) driver — a multi-word command whose
 /// first token's basename is `zig`. `zig cc` IS clang under the hood (so it
 /// classifies as [`Clang`] and reuses clang's flag set), but it links with `lld`,
@@ -201,7 +185,7 @@ pub fn zig_sanitizer_flags(cc : String) -> Array[String] {
 ///|
 /// Whether the final link must pass `-lm` to pull in libm. gcc-style drivers do;
 /// MSVC's CRT already provides the math functions, so it must NOT. The rule lives
-/// here, not at the executor's branch position.
+/// here, not at the command renderer's branch position.
 pub fn should_link_libm(cc : String) -> Bool {
   match cc_kind(cc) {
     // A Windows *target* has math in the CRT and ships no standalone `libm`, even
@@ -217,7 +201,7 @@ pub fn should_link_libm(cc : String) -> Bool {
 /// objects linked into the exe. The simdutf (and stacktrace) code in `runtime.c`
 /// doesn't build cleanly for a Windows target (the `_WIN32`/`_MSC_VER` guards) and
 /// MSVC never enables it, so it reduces to "a gcc-style driver on a non-Windows
-/// host" — but expressing it as a capability keeps the OS check out of the executor.
+/// host" — but expressing it as a capability keeps the OS check out of the command renderer.
 pub fn can_use_simdutf(cc : String) -> Bool {
   match cc_kind(cc) {
     Clang | Gcc => if target_of(cc) is Windows { false } else { true }
@@ -272,7 +256,7 @@ pub fn target_triple_of(cc : String) -> String? {
 /// Whether moonbit's runtime stacktrace path is usable — gates BOTH the
 /// `-DMOONBIT_ALLOW_STACKTRACE` define AND linking `libbacktrace.a`. Same condition
 /// as [`can_use_simdutf`] today; kept a SEPARATE predicate so the two can diverge
-/// per-platform later without touching the executor.
+/// per-platform later without touching the command renderer.
 pub fn can_use_stacktrace(cc : String) -> Bool {
   match cc_kind(cc) {
     Clang | Gcc => if target_of(cc) is Windows { false } else { true }

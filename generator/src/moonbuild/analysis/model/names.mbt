@@ -2,7 +2,7 @@
 
 ///|
 /// Arena handle for a discovered package_name.
-/// Only [`DiscoverResult`] mints these,so indexing back into it is total.
+/// Only [`PackageTable`] mints these,so indexing back into it is total.
 pub(all) struct PackageId(Int) derive(Eq, Hash)
 
 ///|
@@ -32,7 +32,7 @@ pub fn PackagePath::from_segments(segments : Array[String]) -> PackagePath {
 
 ///|
 pub fn PackagePath::empty() -> PackagePath {
-  { segments: [] }
+  { segments: [], }
 }
 
 ///|

@@ -12,32 +12,20 @@ let ignore_dirs : Array[String] = [
 ]
 
 ///|
-/// Discover every package_name in the local module rooted at `dir`.
-pub fn discover_local_module(
-  dir : String,
-  scanner? : &SourceScanner = PlainScanner::{  },
-) -> @model.DiscoverResult raise @model.DiscoverError {
-  let res = @model.DiscoverResult::new()
-  let (ctx, scan_root) = register_module(res, dir, scanner)
-  walk(res, ctx, scan_root, [])
-  res
-}
-
-///|
 /// Discover packages across a whole resolved closure: `dirs` is the module-root
 /// directories (the local root first, then each fetched dependency module). Each
 /// dir holds a `moon.mod`. This is what feeds a build that depends on external
 ///  modules — the output of the resolver becomes the input here.
 pub fn discover_modules(
   dirs : Array[String],
-  scanner? : &SourceScanner = PlainScanner::{  },
-) -> @model.DiscoverResult raise @model.DiscoverError {
-  let res = @model.DiscoverResult::new()
+  module_edges? : Map[String, Map[String, String]] = Map([]),
+) -> @model.PackageTable raise @model.DiscoverError {
+  let res = @model.PackageTable::new(module_edges~)
   // Register every module first (manifest read only — assigns the module id, builds
   // its ctx; NO tree walk), so module ids stay deterministic in `dirs` order.
   let mods : Array[(ModuleCtx, String)] = []
-  for dir in dirs {
-    mods.push(register_module(res, dir, scanner))
+  for i in 0..<dirs.length() {
+    mods.push(register_module(res, dirs[i], versioned=i > 0 && !module_edges.is_empty()))
   }
   guard mods.length() > 0 else { return res }
   // The ROOT module (dirs[0]) is walked in full: `moon check`/`build`/`test` operate
@@ -48,7 +36,7 @@ pub fn discover_modules(
   // from the root's import graph are walked, never a dep module's whole tree (e.g.
   // all of `moonbitlang/x` when one package is used). Pruning the unused dep
   // packages is the bulk of discovery's cost (each is a dir list + per-file stat).
-  demand_discover_deps(res, mods, scanner)
+  demand_discover_deps(res, mods, module_edges)
   res
 }
 
@@ -57,7 +45,7 @@ pub fn discover_modules(
 /// (regular + test-only) plus the virtual packages it implements / overrides. Used
 /// to drive demand discovery — following these from the root reaches exactly the
 /// set the solver/planner can ever need (a superset of what any one command builds).
-fn package_edges(pkg : @model.DiscoveredPackage) -> Array[String] {
+fn package_edges(pkg : @model.Package) -> Array[String] {
   let out : Array[String] = []
   for s in pkg.imports {
     out.push(s.path)
@@ -86,13 +74,22 @@ fn package_edges(pkg : @model.DiscoveredPackage) -> Array[String] {
 /// over `a`). `None` = not a known dependency package (e.g. a stdlib import, or the
 /// root module's own packages) — such edges are simply not discovered here.
 fn locate_dep_package(
-  by_name : Map[String, (ModuleCtx, String)],
+  mods : Array[(ModuleCtx, String)],
+  module_edges : Map[String, Map[String, String]],
+  importer : ModuleCtx,
   fqn : String,
 ) -> (ModuleCtx, String, Array[String])? {
   let mut best : (ModuleCtx, String, Array[String])? = None
   let mut best_len = -1
-  for name, v in by_name {
+  for v in mods {
     let (ctx, scan) = v
+    let name = ctx.name
+    let same_module = ctx.identity == importer.identity
+    let edge_matches = match module_edges.get(importer.identity) {
+      Some(deps) => deps.get(name) == Some(ctx.version)
+      None => module_edges.is_empty()
+    }
+    if !same_module && !edge_matches { continue }
     let rel : Array[String]? = if fqn == name {
       Some([])
     } else {
@@ -119,39 +116,35 @@ fn locate_dep_package(
 /// override graph starting from the already-discovered (root) packages, walking
 /// each reachable dep package exactly once and never touching unused ones.
 fn demand_discover_deps(
-  res : @model.DiscoverResult,
+  res : @model.PackageTable,
   mods : Array[(ModuleCtx, String)],
-  _scanner : &SourceScanner,
+  module_edges : Map[String, Map[String, String]],
 ) -> Unit raise @model.DiscoverError {
-  // Dependency modules only (skip the root at index 0): name -> (ctx, scan root).
-  let by_name : Map[String, (ModuleCtx, String)] = Map([])
-  for i in 1..<mods.length() {
-    let (ctx, scan) = mods[i]
-    by_name[ctx.name] = (ctx, scan)
-  }
+  let (root_ctx, _) = mods[0]
   // `seen` covers every already-discovered package (the root's) so we neither
   // re-discover them nor chase intra-root edges.
   let seen : Set[String] = Set([])
-  let queue : Array[String] = []
+  let queue : Array[(ModuleCtx, String)] = []
   for pkg in res.all_packages() {
-    seen.add(pkg.fqn.to_string())
+    seen.add(root_ctx.identity + "|" + pkg.fqn)
   }
   for pkg in res.all_packages() {
     for e in package_edges(pkg) {
-      queue.push(e)
+      queue.push((root_ctx, e))
     }
   }
   let mut qi = 0
   while qi < queue.length() {
-    let fqn = queue[qi]
+    let (importer, fqn) = queue[qi]
     qi += 1
-    if seen.contains(fqn) {
+    let request_key = importer.identity + "|" + fqn
+    if seen.contains(request_key) {
       continue
     }
-    seen.add(fqn)
+    seen.add(request_key)
     // Not a known dependency package (stdlib / root-module edge) — skip; the solver
     // resolves stdlib via the bundle, and root packages are already discovered.
-    guard locate_dep_package(by_name, fqn) is Some((ctx, scan, rel)) else {
+    guard locate_dep_package(mods, module_edges, importer, fqn) is Some((ctx, scan, rel)) else {
       continue
     }
     let dir = if rel.is_empty() { scan } else { scan + "/" + rel.join("/") }
@@ -161,9 +154,11 @@ fn demand_discover_deps(
       continue
     }
     let pkg = discover_one_package(ctx, dir, rel)
-    res.add_package(ctx.mid, pkg) |> ignore
+    if res.get_package_id_by_name(pkg.fqn) is None {
+      res.add_package(ctx.mid, pkg) |> ignore
+    }
     for e in package_edges(pkg) {
-      queue.push(e)
+      queue.push((ctx, e))
     }
   }
 }
@@ -171,13 +166,16 @@ fn demand_discover_deps(
 ///|
 /// The immutable per-module context threaded through the package walk: everything
 /// that stays constant for one `moon.mod`'s subtree — its id, name, root, the
-/// module-level flags/rules/diagnostics, and the source scanner. Only the current
+/// module-level flags/rules/diagnostics. Only the current
 /// directory (`abs`) and its module-relative segments (`rel`) change as `walk`
 /// recurses, so bundling the rest here keeps the recursion a 4-argument call
 /// instead of re-threading a dozen scalars at every level.
 priv struct ModuleCtx {
   mid : @model.ModuleId
   name : String
+  version : String
+  identity : String
+  fqn_prefix : String
   root : String
   compile_flags : Array[String]
   link_flags : Array[String]
@@ -187,7 +185,6 @@ priv struct ModuleCtx {
   alert : String?
   // `--moonbit-unstable-prebuild` resolved to an ABSOLUTE script path (None if unset).
   prebuild_script : String?
-  scanner : &SourceScanner
 }
 
 ///|
@@ -201,9 +198,9 @@ priv struct ModuleCtx {
 /// module dir, or `dir/<source>` when `options(source:)` is set). Walking is the
 /// caller's choice: the root module is walked in full, dep modules on demand.
 fn register_module(
-  res : @model.DiscoverResult,
+  res : @model.PackageTable,
   dir : String,
-  scanner : &SourceScanner,
+  versioned? : Bool = false,
 ) -> (ModuleCtx, String) raise @model.DiscoverError {
   // Module manifest: DSL `moon.mod`, else JSON `moon.mod.json`.
   let entries = match @parse.load_mod(dir) {
@@ -213,9 +210,14 @@ fn register_module(
   let m = @config.decode_mod(entries) catch {
     e => raise @model.DecodeModule(path=dir + "/moon.mod", inner=e)
   }
+  let version = match m.version { Some(v) => v; None => "" }
+  let identity = m.name + "@" + version
   let ctx = ModuleCtx::{
-    mid: res.add_module(m.name),
+    mid: res.add_module(m.name, version~, versioned~),
     name: m.name,
+    version,
+    identity,
+    fqn_prefix: if versioned { identity } else { m.name },
     root: dir,
     compile_flags: m.compile_flags,
     link_flags: m.link_flags,
@@ -225,7 +227,6 @@ fn register_module(
     alert: m.alert_list,
     // Resolve the prebuild script (manifest path is relative to the module root).
     prebuild_script: m.unstable_prebuild.map(s => dir + "/" + s),
-    scanner,
   }
   let scan_root = if m.source == "" { dir } else { dir + "/" + m.source }
   (ctx, scan_root)
@@ -236,7 +237,7 @@ fn register_module(
 /// `res`. A directory may be both a package_name and contain sub-packages, so we
 /// recurse regardless of whether the current directory is itself a package_name.
 fn walk(
-  res : @model.DiscoverResult,
+  res : @model.PackageTable,
   ctx : ModuleCtx,
   abs : String,
   rel : Array[String],
@@ -279,9 +280,9 @@ fn discover_one_package(
   ctx : ModuleCtx,
   abs : String,
   rel : Array[String],
-) -> @model.DiscoveredPackage raise @model.DiscoverError {
+) -> @model.Package raise @model.DiscoverError {
   let fqn = @model.PackageFQN::{
-    module_name: ctx.name,
+    module_name: ctx.fqn_prefix,
     package_path: @model.PackagePath::from_segments(rel),
   }
   // Package manifest: DSL `moon.pkg`, else JSON `moon.pkg.json`.
@@ -349,7 +350,7 @@ fn discover_one_package(
     if is_test {
       continue
     }
-    let facts = ctx.scanner.scan(f)
+    let facts = scan_source(@os.read_file(f))
     for a in facts.reexports {
       reexport_aliases.add(a)
     }
@@ -369,11 +370,18 @@ fn discover_one_package(
       reexports.push(spec.path)
     }
   }
-  @model.DiscoveredPackage::{
+  @model.Package::{
     root_path: abs,
     module_root: ctx.root,
     module_id: ctx.mid,
-    fqn,
+    fqn: fqn.to_string(),
+    module_name: ctx.name,
+    package_segments: rel,
+    package_path: fqn.package_path.to_string(),
+    short_alias: @model.PackageFQN::{
+      module_name: ctx.name,
+      package_path: fqn.package_path,
+    }.short_alias(),
     source_files,
     mbt_md_files,
     native_stub_files,
@@ -478,7 +486,7 @@ fn resolve_prebuild(
       None => out.push(r) // inline command
       Some(name) =>
         match lookup(name) {
-          Some(cmd) => out.push({ ..r, command: cmd, rule: None })
+          Some(cmd) => out.push({ ..r, command: cmd, rule: None, })
           None =>
             raise @model.UnknownPrebuildRule(package_name=pkg_fqn, rule=name)
         }

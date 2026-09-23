@@ -7,26 +7,8 @@
 pub(all) struct SourceFacts {
   /// Local aliases re-exported by a top-level `pub using @alias {…}` line. The
   /// discoverer resolves each alias against the package's import list to learn
-  /// which packages are re-exported (see `DiscoveredPackage::reexports`).
+  /// which packages are re-exported (see `Package::reexports`).
   reexports : Array[String]
-}
-
-///|
-/// Reads a source file and returns its [`SourceFacts`].
-pub(open) trait SourceScanner {
-  fn scan(Self, path : String) -> SourceFacts
-}
-
-///|
-/// Read the file and scan it every time.
-pub struct PlainScanner {}
-
-///|
-pub extend PlainScanner with SourceScanner::{scan}
-
-///|
-pub impl SourceScanner for PlainScanner with fn scan(_self, path) {
-  scan_source(@os.read_file(path))
 }
 
 ///|

@@ -1,7 +1,8 @@
 import {
-  "moon/moonbuild/analysis/model",
   "moon/util/config",
+  "moon/util/parse",
   "moon/util/os",
+  "moonbitlang/core/string",
 }
 
 supported_targets = "native"

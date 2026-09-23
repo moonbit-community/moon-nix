@@ -55,7 +55,6 @@ fn runtime_actions(
         cc=nc.cc,
         include_dir=nc.include_dir(),
         runtime_c=src,
-        cc_kind=@cc.cc_kind_tag(nc.cc),
         simdutf~,
         debug_info=!cfg.strip,
       ),
@@ -83,7 +82,6 @@ fn cstub_action(
   cfg : BuildConfig,
   nc : NativeToolchain,
   fqn : String,
-  _idx : Int,
   stub : String,
   native_link : @config.NativeLinkConfig?,
 ) -> @core.Action {
@@ -118,7 +116,6 @@ fn cstub_action(
       include_dir=nc.include_dir(),
       stub~,
       cc_flags~,
-      cc_kind=@cc.cc_kind_tag(cc),
       debug_info=!cfg.strip,
       debug_mode=cfg.mode is Debug,
     ),
@@ -135,7 +132,6 @@ fn objcstub_action(
   cfg : BuildConfig,
   nc : NativeToolchain,
   fqn : String,
-  _idx : Int,
   stub : String,
   native_link : @config.NativeLinkConfig?,
   cpp : Bool,
@@ -152,7 +148,6 @@ fn objcstub_action(
       include_dir=nc.include_dir(),
       stub~,
       cc_flags=split_words(native_link.bind(fn(n) { n.stub_cc_flags })),
-      cc_kind=@cc.cc_kind_tag(cc),
       cpp~,
       debug_info=!cfg.strip,
       debug_mode=cfg.mode is Debug,
@@ -188,7 +183,6 @@ fn zigstub_action(
   cfg : BuildConfig,
   nc : NativeToolchain,
   fqn : String,
-  _idx : Int,
   stub : String,
   zig : String,
   modules : Array[(String, String)],
@@ -225,14 +219,11 @@ fn zigstub_action(
 ///|
 /// Compile one native stub into a `.o`, dispatching by extension: `.zig` → `zig
 /// build-obj`, `.m`/`.mm` → `clang` (gated to a clang cc), everything else → `cc`.
-/// Shared by the main build (`build_plan`) and the test build (`test_build`) so
-/// both honor the stub language. `zig_modules` are the package's translate-c'd
-/// modules (empty when none / in the test build).
+/// `zig_modules` are the package's translated C headers, when configured.
 fn stub_object_action(
   cfg : BuildConfig,
   nc : NativeToolchain,
   fqn : String,
-  idx : Int,
   stub : String,
   native_link : @config.NativeLinkConfig?,
   zig_modules : Array[(String, String)],
@@ -242,23 +233,15 @@ fn stub_object_action(
       Some(z) => z
       None => raise ZigToolchainMissing(package_name=fqn, stub~)
     }
-    zigstub_action(cfg, nc, fqn, idx, stub, zig, zig_modules)
+    zigstub_action(cfg, nc, fqn, stub, zig, zig_modules)
   } else if stub.has_suffix(".m") || stub.has_suffix(".mm") {
     let cc = effective_stub_cc(nc, native_link)
     guard @cc.cc_kind(cc) is Clang else {
       raise ObjcRequiresClang(package_name=fqn, stub~, cc~)
     }
-    objcstub_action(
-      cfg,
-      nc,
-      fqn,
-      idx,
-      stub,
-      native_link,
-      stub.has_suffix(".mm"),
-    )
+    objcstub_action(cfg, nc, fqn, stub, native_link, stub.has_suffix(".mm"))
   } else {
-    cstub_action(cfg, nc, fqn, idx, stub, native_link)
+    cstub_action(cfg, nc, fqn, stub, native_link)
   }
 }
 
@@ -328,14 +311,8 @@ fn make_exec_action(
   bin_name : String?,
   link_flags : Array[String],
   stub_link_flags : Array[String],
-  out_override? : String,
 ) -> @core.Action {
-  // The build path parks the exe at the package's `native_exe_path`; the test
-  // pipeline reuses this builder but overrides the output.
-  let out = match out_override {
-    Some(o) => o
-    None => native_exe_path(cfg, main_fqn, bin_name)
-  }
+  let out = native_exe_path(cfg, main_fqn, bin_name)
   let extra_objs = nc.extra_objs()
   let libs = nc.libs()
   let moonbitrun_o = nc.moonbitrun_o()
@@ -400,7 +377,6 @@ fn make_exec_action(
       cc_flags=split_words(native_link.bind(fn(n) { n.cc_flags })),
       cc_link_flags~,
       link_flags~,
-      cc_kind=@cc.cc_kind_tag(cc),
       debug_info=!cfg.strip,
       debug_mode=cfg.mode is Debug,
       gen_dsym~,

@@ -1,12 +1,15 @@
 import {
   "moon/util/os",
+  "moon/util/config",
+  "moon/util/parse",
+  "moon/mooncake/mvs",
   "moon/moonbuild/analysis/discover",
-  "moon/moonbuild/analysis/model",
   "moon/moonbuild/analysis/pkg_solve",
   "moon/moonbuild/build_plan",
-  "moon/moonbuild/engine/executor",
+  "moon/moonbuild/action_renderer",
   "moon/moonbuild/core",
-  "moonbitlang/core/json",
 }
+
 pkgtype(kind: "executable")
+
 supported_targets = "native"

@@ -8,7 +8,7 @@
 /// is expanded for `$input` / `$output` / `$pkg_dir`. Mirrors moonbuild's
 /// `RunPrebuild` node.
 fn emit_prebuild_actions(
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   pkg_id : @model.PackageId,
   actions : Map[String, @core.Action],
   mooncake_bin~ : String,
@@ -68,7 +68,7 @@ fn emit_prebuild_actions(
 /// their executables and where `$mooncake_bin` in a pre-build command expands to.
 /// Derived from the root module (`ModuleId(0)`) source root; `""`-rooted fallback
 /// if somehow no root-module package exists (no pre-build can run then anyway).
-fn root_mooncake_bin(packages : @model.BuildDiscovery) -> String {
+fn root_mooncake_bin(packages : @model.PackageTable) -> String {
   let mut root = ""
   for pkg in packages.all_packages() {
     let @model.ModuleId(m) = pkg.module_id

@@ -2,12 +2,8 @@ import {
   "moonbitlang/x/os" @unix,
   "moonbitlang/x/os/fs" @unix/fs,
   "moonbitlang/x/os/process" @unix/process,
-  "moonbitlang/async/fs",
-  "moonbitlang/async/os_error",
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
-
-
 
 // The generic synchronous native surface lives in `moonbitlang/x/os`,
 // with filesystem and process operations in its `fs` and `process` packages.

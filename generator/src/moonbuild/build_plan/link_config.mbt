@@ -3,7 +3,7 @@
 // `link-core` / native cc actions carry.
 
 ///|
-pub fn is_linkable(pkg : @model.BuildPackage, backend : Backend) -> Bool {
+pub fn is_linkable(pkg : @model.Package, backend : Backend) -> Bool {
   pkg.is_main ||
   pkg.is_linked ||
   (match pkg.link {
@@ -29,7 +29,7 @@ fn split_words(s : String?) -> Array[String] {
 ///|
 /// The package's `link.<backend>.exports` for the ACTIVE backend (native and
 /// llvm share `link.native`, like moon). Empty when unset.
-fn link_exports(pkg : @model.BuildPackage, backend : Backend) -> Array[String] {
+fn link_exports(pkg : @model.Package, backend : Backend) -> Array[String] {
   match pkg.link {
     Some(l) =>
       match backend {
@@ -62,7 +62,7 @@ fn link_exports(pkg : @model.BuildPackage, backend : Backend) -> Array[String] {
 /// `-js-format` is emitted iff the manifest HAS a `link.js` object (its absence
 /// leaves moonc's own default in charge) — the decoded `format` already defaults
 /// to `"esm"`. Only meaningful on the js backend.
-fn link_js_format(pkg : @model.BuildPackage, backend : Backend) -> String? {
+fn link_js_format(pkg : @model.Package, backend : Backend) -> String? {
   guard backend is Js else { return None }
   match pkg.link {
     Some(l) =>
@@ -79,7 +79,7 @@ fn link_js_format(pkg : @model.BuildPackage, backend : Backend) -> String? {
 /// path-free [`@core.WasmLinkOpts`]. `None` on other backends or when the
 /// manifest has no matching block.
 fn link_wasm_opts(
-  pkg : @model.BuildPackage,
+  pkg : @model.Package,
   backend : Backend,
 ) -> @core.WasmLinkOpts? {
   guard pkg.link is Some(l) else { return None }
@@ -124,7 +124,7 @@ fn link_wasm_opts(
 
 ///|
 /// The package's `link.native` block, if any — the cc / stub-cc override source.
-fn native_link_of(pkg : @model.BuildPackage) -> @config.NativeLinkConfig? {
+fn native_link_of(pkg : @model.Package) -> @config.NativeLinkConfig? {
   match pkg.link {
     Some(l) => l.native
     None => None
@@ -134,8 +134,6 @@ fn native_link_of(pkg : @model.BuildPackage) -> @config.NativeLinkConfig? {
 ///|
 /// The package's effective `link.native`, currently just the manifest's regular
 /// `link.native` block.
-fn effective_native_link(
-  pkg : @model.BuildPackage,
-) -> @config.NativeLinkConfig? {
+fn effective_native_link(pkg : @model.Package) -> @config.NativeLinkConfig? {
   native_link_of(pkg)
 }

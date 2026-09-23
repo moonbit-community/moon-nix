@@ -19,7 +19,7 @@
 /// `package fqn → final-link words` map. Empty when no module in the closure declares
 /// a prebuild.
 fn collect_prebuild_link_map(
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   order : Array[@pkg_solve.BuildTarget],
 ) -> Map[String, Array[String]] raise BuildPlanError {
   let map : Map[String, Array[String]] = Map([])

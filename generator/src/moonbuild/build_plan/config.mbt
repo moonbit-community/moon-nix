@@ -1,11 +1,4 @@
-// Lowers a solved dependency graph into a concrete `@core.Action` plan that the
-// existing scheduler/rebuilder can run. Mirrors moonbuild rupes-recta's
-// build_plan, collapsed to the two load-bearing node kinds:
-//   - BuildCore  (`moonc build-package_name`: .mbt + dep .mi  -> .core)
-//   - LinkCore   (`moonc link-core`:     all .core        -> executable)
-//
-// Demand-driven like the original: we start from the target executable and pull
-// in exactly the packages in its dependency closure.
+// Toolchain configuration and validated artifact plans.
 
 ///|
 /// How to reach the standard library. When present, every `build-package_name` gets
@@ -208,137 +201,23 @@ pub fn Mode::name(self : Mode) -> String {
 ///|
 /// Knobs that shape the produced commands but are not part of the source tree.
 pub(all) struct BuildConfig {
-  /// The compile backend (carries the native C config when `Native`).
   backend : Backend
-  /// The target platform (OS + toolchain) for a native/llvm build — the canonical
-  /// source of truth for OS-dependent decisions (executable suffix, OS-conditional
-  /// source gating). Ignored by wasm/js backends (which have no native OS). The cc
-  /// triple in the `Native` config is derived from this same platform.
-  target_platform : @os.Platform
-  /// `Debug` / `Release`.
   mode : Mode
-  /// Directory the `.core` / executable artifacts are written to.
-  out_dir : String
-  /// Compiler identity (e.g. `moonc -v`), folded into each action's digest.
-  moonc_version : String
-  /// Standard-library wiring, or `None` for a no-std plan.
-  std : StdConfig?
-  /// `--enable-coverage`: instrument compiles (and the test driver) so a test run
-  /// writes `moonbit_coverage_*` traces. Off for plain build/check.
-  coverage : Bool
-  /// `--enable-value-tracing`: pass `-enable-value-tracing` to `moonc
-  /// build-package` so traced values are reported. Off by default.
-  value_tracing : Bool
-  /// `moon bundle` only: `Some(<root module name>)` switches the artifact layout
-  /// from the normal package-scoped build tree to the BUNDLE tree moonc's
-  /// `-std-path` consumes: `<out>/<pkg-path-within-module>/<last>.{core,mi}`
-  /// (e.g. `moonbitlang/core/json` → `<out>/json/json.core`). `None` everywhere
-  /// else.
-  bundle_of : String?
-  /// Use rust moon's workspace artifact layout:
-  /// `<out>/<module>/<package-path>/<last>.{core,mi}`.
-  workspace_layout : Bool
-  /// Rust moon's mono compatibility layout for a single local module:
-  /// `<out>/<package-path>/<last>` for the root module, and
-  /// `<out>/.mooncakes/<module>/<package-path>/<last>` for dependencies.
-  /// When absent, the workspace layout is used.
-  mono_module : String?
-  /// `-d`/`--deny-warn`: treat warnings as errors (moonc `-w @a`) for the ROOT
-  /// module's packages. Dependencies are suppressed regardless, so deny never
-  /// applies to them.
-  deny_warnings : Bool
-  /// `--error-format <human|json>`: how moonc renders diagnostics. `None` = human
-  /// (the default). Diagnostic-only — does NOT enter the action digest (the digest
-  /// folds target/mode/moonc_version + spec identity, not this), so toggling it
-  /// never forces a rebuild.
-  error_format : String?
-  /// `--output-wat`: emit the wasm artifact as text (`.wat`) instead of binary
-  /// (`.wasm`) — moonc's `link-core -o` picks the format from the suffix. Only
-  /// affects the wasm/wasm-gc backends; ignored elsewhere.
-  output_wat : Bool
-  /// Effective "strip debug info" decision (upstream `--strip`/`--no-strip`): when
-  /// true, no `-g`/`-source-map` is emitted. `--strip` forces true, `--no-strip`
-  /// forces false; with neither it defaults to `mode == Release` (so debug keeps
-  /// symbols, release strips). The inverse (`debug_symbols`) reaches the executor
-  /// via `BuildEnv`.
+  /// Debug symbols are independent of the optimization profile.
   strip : Bool
-  /// Diagnostic capture/render options (upstream `--output-json` / `--no-render` /
-  /// `--diagnostic-limit` / `--render-no-loc`). Diagnostic-only — never in the digest.
-  diag : @core.DiagOptions
-  /// `--warn-list <spec>`: a CLI moonc `-w` spec appended (after the package's own
-  /// `warnings` config) for the ROOT module's packages. `None` = not given.
-  cli_warn_list : String?
-  /// `--sort-input`: pass source files to moonc in sorted order (deterministic),
-  /// applied in `compile_sources`. Folds into the digest via the sources list.
-  sort_input : Bool
-  /// The experimental "new native" backend's moonc target triple (mirrors rust
-  /// moon's `MOONBIT_NEW_NATIVE=1`). `Some("aarch64-apple-darwin")` /
-  /// `Some("x86_64-unknown-linux-gnu")` ONLY when the host-native backend is active
-  /// and opted in: then `link-core` is given `-target <triple>` and lowers straight
-  /// to a ready-to-link `.o` (like the llvm backend) instead of generating `.c` for
-  /// `cc` to compile. `None` everywhere else — every non-native backend, a cross
-  /// build, and the default opt-out. Set at the
-  /// `main`-layer config builders (it reads process env, which the pipeline doesn't).
-  native_target : String?
+  target_platform : @os.Platform
+  out_dir : String
+  /// A module bundle uses paths relative to this module; ordinary builds include the module name.
+  bundle_of : String?
+  std : StdConfig?
 }
 
 ///|
-/// Construct a BuildConfig inside this package so callers do not need to depend
-/// on cross-package record construction details.
-pub fn build_config(
-  backend : Backend,
-  target_platform : @os.Platform,
-  mode : Mode,
-  out_dir : String,
-  moonc_version : String,
-  std : StdConfig?,
-  coverage : Bool,
-  value_tracing : Bool,
-  bundle_of : String?,
-  workspace_layout : Bool,
-  mono_module : String?,
-  deny_warnings : Bool,
-  error_format : String?,
-  output_wat : Bool,
-  strip : Bool,
-  diag : @core.DiagOptions,
-  cli_warn_list : String?,
-  sort_input : Bool,
-  native_target : String?,
-) -> BuildConfig {
-  {
-    backend,
-    target_platform,
-    mode,
-    out_dir,
-    moonc_version,
-    std,
-    coverage,
-    value_tracing,
-    bundle_of,
-    workspace_layout,
-    mono_module,
-    deny_warnings,
-    error_format,
-    output_wat,
-    strip,
-    diag,
-    cli_warn_list,
-    sort_input,
-    native_target,
-  }
-}
-
-///|
-/// The lowered plan: a map from artifact path (the scheduler's key) to the
-/// action that produces it, plus the `roots` to demand. Usually one (a build's
-/// executable / a lib's `.core`); `check`/`test` demand many (one `.mi` / test
-/// exe per package) — there is no phony aggregate folding them into one.
+/// Actions keyed by their primary artifact, plus the requested output artifacts.
 pub struct Plan {
   actions : Map[String, @core.Action]
   roots : Array[String]
-  /// The build-wide environment (target/mode/moonc_version), uniform across every
-  /// action. Lives here once rather than on each action; the engine captures it.
+  /// Command settings shared by every action.
   env : @core.BuildEnv
 }
 
@@ -390,7 +269,7 @@ pub fn Plan::make(
       None => raise UnknownPlanRoot(root~)
     }
   }
-  { actions, roots, env }
+  { actions, roots, env, }
 }
 
 ///|
@@ -409,15 +288,11 @@ pub fn Plan::env(self : Plan) -> @core.BuildEnv {
 }
 
 ///|
-/// The build-wide environment derived from the config: backend / mode / compiler.
 pub fn build_env(cfg : BuildConfig) -> @core.BuildEnv {
   {
     target: cfg.backend.name(),
     mode: cfg.mode.name(),
-    moonc_version: cfg.moonc_version,
-    error_format: cfg.error_format.unwrap_or("human"),
     debug_symbols: !cfg.strip,
-    diag: cfg.diag,
   }
 }
 

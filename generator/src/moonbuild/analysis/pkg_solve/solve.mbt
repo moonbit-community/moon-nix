@@ -5,68 +5,23 @@
 // edge. Finally we reject any cycle in the resulting graph.
 
 ///|
-fn timing_enabled() -> Bool {
-  @os.getenv("MYMOON_TIMING") is Some("1")
-}
-
-///|
-fn timing_ms(start : Int64) -> Int64 {
-  (@os.now_ns() - start) / 1_000_000L
-}
-
-///|
-fn timing_log(label : String, start : Int64) -> Unit {
-  let ms = timing_ms(start)
-  if timing_enabled() && ms > 0 {
-    @os.eprintln("timing \{label}: \{ms}ms")
-  }
-}
-
-///|
-/// Solve and validate the dependency relationship between all discovered
-/// packages.
 pub fn solve(
-  packages : @model.BuildDiscovery,
-) -> DepRelationship raise SolveError {
-  solve_inner(packages, include_tests=true)
-}
-
-///|
-/// Solve only the package build graph. `moon check` / `moon build` never consume
-/// test targets, so skipping them avoids constructing root-module
-/// Whitebox/Blackbox/Inline nodes on the hot path. `moon test` / `moon bench`
-/// still use [`solve`].
-pub fn solve_without_tests(
-  packages : @model.BuildDiscovery,
-) -> DepRelationship raise SolveError {
-  solve_inner(packages, include_tests=false)
-}
-
-///|
-fn solve_inner(
-  packages : @model.BuildDiscovery,
-  include_tests~ : Bool,
+  packages : @model.PackageTable,
 ) -> DepRelationship raise SolveError {
   let res = DepRelationship::new()
   let n = packages.package_count()
   // Pass 0: resolve every package's `implement` field into `virt_impl`. Split
   // out because the main pass (import rejection + override resolution) must see
   // which packages implement which virtual BEFORE it runs.
-  let t_virtual_impl = @os.now_ns()
   for i in 0..<n {
     let pkg_id = @model.PackageId(i)
     solve_virtual_impl(res, packages, pkg_id)
   }
-  timing_log("solve.virtual_impl", t_virtual_impl)
-  let t_packages = @os.now_ns()
   for i in 0..<n {
     let pkg_id = @model.PackageId(i)
-    solve_one_package(res, packages, pkg_id, include_tests~)
+    solve_one_package(res, packages, pkg_id)
   }
-  timing_log("solve.packages", t_packages)
-  let t_cycles = @os.now_ns()
   check_no_cycles(res, n)
-  timing_log("solve.cycles", t_cycles)
   res
 }
 
@@ -80,7 +35,7 @@ fn is_std_virtual_package(fqn : String) -> Bool {
 ///|
 fn solve_virtual_impl(
   res : DepRelationship,
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   pkg_id : @model.PackageId,
 ) -> Unit raise SolveError {
   let pkg = packages.get_package(pkg_id)
@@ -88,7 +43,7 @@ fn solve_virtual_impl(
   match pkg.implement {
     None => ()
     Some(target_path) => {
-      let target_pkg_id = match packages.get_package_id_by_name(target_path) {
+      let target_pkg_id = match packages.get_package_id_for_import(pkg_id, target_path) {
         Some(id) => id
         None => {
           if is_std_virtual_package(target_path) {
@@ -113,23 +68,13 @@ fn solve_virtual_impl(
 /// Resolve and record the dependency edges contributed by one package_name's imports.
 fn solve_one_package(
   res : DepRelationship,
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   pkg_id : @model.PackageId,
-  include_tests~ : Bool,
 ) -> Unit raise SolveError {
   let pkg = packages.get_package(pkg_id)
   let src = BuildTarget::primary(pkg_id)
-  // The Primary target's resolved dependency edges, reused by the package_name's test
-  // targets (a `_wbtest`/`_test` file shares the package_name's import list).
-  let dep_edges = add_import_edges(
-    res,
-    packages,
-    src,
-    pkg_id,
-    pkg,
-    pkg.imports,
-    via="import",
-  )
+  // Resolve the primary target before its conditional and sub-package imports.
+  add_import_edges(res, packages, src, pkg_id, pkg, pkg.imports)
 
   // Conditional imports (`import {} for "<x>"`): add each set as edges tagged with
   // its condition (backend OR platform), so `DepRelationship::specialize` keeps only
@@ -143,10 +88,8 @@ fn solve_one_package(
       pkg_id,
       pkg,
       specs,
-      via="import",
       cond=Some(classify_dep_cond(section)),
     )
-    |> ignore
   }
 
   // A SUB-PACKAGE is a separate build target: a file subset compiled with its OWN
@@ -156,18 +99,9 @@ fn solve_one_package(
   // subset (importing it via `sub-package: true`) avoids the heavier closure.
   match pkg.sub_package {
     Some(sub) => {
-      let sub_target = BuildTarget::{ pkg: pkg_id, kind: SubPackage }
+      let sub_target = BuildTarget::{ pkg: pkg_id, kind: SubPackage, }
       res.add_node(sub_target)
-      add_import_edges(
-        res,
-        packages,
-        sub_target,
-        pkg_id,
-        pkg,
-        sub.imports,
-        via="import",
-      )
-      |> ignore
+      add_import_edges(res, packages, sub_target, pkg_id, pkg, sub.imports)
     }
     None => ()
   }
@@ -180,7 +114,7 @@ fn solve_one_package(
     let sel : Map[@model.PackageId, @model.PackageId] = Map([])
     let std_sel : Map[String, @model.PackageId] = Map([])
     for over_path in pkg.overrides {
-      let over_pkg_id = match packages.get_package_id_by_name(over_path) {
+      let over_pkg_id = match packages.get_package_id_for_import(pkg_id, over_path) {
         Some(id) => id
         None =>
           raise ImportNotFound(
@@ -228,129 +162,29 @@ fn solve_one_package(
       res.std_virtual_users[pkg_id] = std_sel
     }
   }
-
-  // Test targets: a package_name's test files form separate build targets. Whitebox
-  // (`_wbtest.mbt`) compiles together WITH the package_name's own sources, so it shares
-  // exactly the package_name's import deps. Blackbox (`_test.mbt`) is a separate package_name
-  // that, on top of those imports, depends on the package-under-test's Primary
-  // (which it imports through the public API). Both are graph leaves — nothing
-  // depends on a test target — so they never enter cycle detection or the Primary
-  // view, only a test build pulls them in.
-  //
-  // Only the ROOT module's packages get test targets — `moon test` tests YOUR
-  // code, not your dependencies'. (Deps still contribute their Primary targets
-  // above; we just never build/run a dependency's `_wbtest`/`_test`/doctests.)
-  let @model.ModuleId(mid) = pkg.module_id
-  // Lint: a MAIN package is an executable, not an importable library, so blackbox
-  // test inputs (`_test.mbt` / `.mbt.md`, which compile against it as an external
-  // importer would) don't belong on it. Whitebox/inline tests are fine. Matches
-  // upstream's "Main package … uses blackbox-only test inputs".
-  if mid == 0 && pkg.is_main {
-    let kinds : Array[String] = []
-    if pkg.has_blackbox_tests() {
-      kinds.push("`_test.mbt` files")
-    }
-    if !pkg.mbt_md_files.is_empty() {
-      kinds.push("`.mbt.md` files")
-    }
-    if !kinds.is_empty() {
-      @os.eprintln(
-        "warning: Main package `\{pkg.fqn}` (package directory \"\{pkg.root_path}\") uses blackbox-only test inputs (\{kinds.join(", ")})",
-      )
-    }
-  }
-  // Each test target replays the Primary target's resolved dep edges (a test file
-  // shares the package's import list).
-  if !include_tests {
-    return
-  }
-  fn replay_deps(t : BuildTarget) -> Unit {
-    for d in dep_edges {
-      let (dep_src, edge) = d
-      res.add_edge(t, dep_src, edge)
-    }
-  }
-
-  guard mid == 0 else { return }
-  if pkg.has_whitebox_tests() {
-    let wb = BuildTarget::{ pkg: pkg_id, kind: WhiteboxTest }
-    res.add_node(wb)
-    replay_deps(wb)
-    // Whitebox tests may additionally import packages the package itself doesn't
-    // (`import {} for "wbtest"` / `wbtest-import`).
-    add_import_edges(
-      res,
-      packages,
-      wb,
-      pkg_id,
-      pkg,
-      pkg.wbtest_imports,
-      via="wbtest-import",
-    )
-    |> ignore
-  }
-  // Inline (`internal`) tests compile WITH the package_name's own sources too, so they
-  // share the same import deps as the Primary target. Discovery no longer scans
-  // source content for inline tests; the generated driver/compiler decide whether
-  // any tests exist.
-  if !pkg.source_files.is_empty() {
-    let it = BuildTarget::{ pkg: pkg_id, kind: InlineTest }
-    res.add_node(it)
-    replay_deps(it)
-  }
-  // Blackbox covers `_test.mbt` files, doctests (via `--doctest-only`), AND
-  // `.mbt.md` markdown tests (compiled as blackbox sources) — any of them needs
-  // the blackbox target. It additionally depends on the package-under-test's
-  // Primary (imported via the public API), added first to preserve edge order.
-  if pkg.has_blackbox_tests() ||
-    !pkg.source_files.is_empty() ||
-    !pkg.mbt_md_files.is_empty() {
-    let bb = BuildTarget::{ pkg: pkg_id, kind: BlackboxTest }
-    res.add_node(bb)
-    res.add_edge(bb, src, {
-      short_alias: packages.get_short_alias(pkg_id),
-      kind: Primary,
-      cond: None,
-    })
-    replay_deps(bb)
-    // Blackbox tests may additionally import packages the package itself doesn't
-    // (`import {} for "test"` / `test-import`).
-    add_import_edges(
-      res,
-      packages,
-      bb,
-      pkg_id,
-      pkg,
-      pkg.test_imports,
-      via="test-import",
-    )
-    |> ignore
-  }
 }
 
 ///|
 /// Resolve an import list into dependency edges FROM the given `from` build target
 /// (the `Primary` target, or a `SubPackage` target with its own import list). Each
 /// edge points to the dependency's `Primary` target — or its `SubPackage` target
-/// when the import carries `sub-package: true`. Returns the resolved edges (the
-/// `Primary` target's are replayed onto the package's test targets). Validates
+/// when the import carries `sub-package: true`. Validates
 /// stdlib-skip, virtual-impl-not-importable, internal visibility, and per-list
 /// alias uniqueness.
 fn add_import_edges(
   res : DepRelationship,
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   from : BuildTarget,
   importer_id : @model.PackageId,
-  importer : @model.BuildPackage,
+  importer : @model.Package,
   specs : Array[@config.ImportSpec],
-  via~ : String,
   cond? : DepCond? = None,
-) -> Array[(BuildTarget, DepEdge)] raise SolveError {
+) -> Unit raise SolveError {
   let seen_alias : Map[String, String] = Map([])
   let edges : Array[(BuildTarget, DepEdge)] = []
   for spec in specs {
     let import_path = spec.path
-    let maybe_dep_pkg_id = packages.get_package_id_by_name(import_path)
+    let maybe_dep_pkg_id = packages.get_package_id_for_import(importer_id, import_path)
     // Standard-library packages (`moonbitlang/core/*`) are PROVIDED by the
     // toolchain bundle, not discovered/built here, so they form no local edge;
     // build_plan wires their `.mi` straight from the bundle. Skip them — UNLESS
@@ -377,7 +211,7 @@ fn add_import_edges(
     let @model.ModuleId(im) = importer.module_id
     if dep.is_main && im == 0 {
       @os.eprintln(
-        "warning: package `\{packages.get_fqn(importer_id)}` (package directory \"\{importer.root_path}\") depends on main package `\{packages.get_fqn(dep_pkg_id)}` via `\{via}`",
+        "warning: package `\{packages.get_fqn(importer_id)}` (package directory \"\{importer.root_path}\") depends on main package `\{packages.get_fqn(dep_pkg_id)}` via `import`",
       )
     }
 
@@ -424,13 +258,12 @@ fn add_import_edges(
     // `sub-package: true` → depend on the dependency's SUB-PACKAGE target (its
     // `_sub.mi`), not its `Primary` interface.
     let kind : TargetKind = if spec.sub_package { SubPackage } else { Primary }
-    let to = BuildTarget::{ pkg: dep_pkg_id, kind }
-    let edge : DepEdge = { short_alias: import_alias, kind, cond }
+    let to = BuildTarget::{ pkg: dep_pkg_id, kind, }
+    let edge : DepEdge = { short_alias: import_alias, kind, cond, }
     res.add_edge(from, to, edge)
     edges.push((to, edge))
   }
   add_reexport_edges(res, packages, from, seen_alias, edges, cond~)
-  edges
 }
 
 ///|
@@ -460,7 +293,7 @@ fn classify_dep_cond(section : String) -> DepCond {
 /// short alias may already be taken by a direct import.
 fn add_reexport_edges(
   res : DepRelationship,
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   from : BuildTarget,
   seen_alias : Map[String, String],
   edges : Array[(BuildTarget, DepEdge)],
@@ -478,21 +311,21 @@ fn add_reexport_edges(
     used_alias.add(a)
   }
   // Seed the worklist with the re-exports of every package `from` directly imports.
-  let work : Array[String] = []
+  let work : Array[(@model.PackageId, String)] = []
   for entry in edges {
     for path in packages.get_package(entry.0.pkg).reexports {
-      work.push(path)
+      work.push((entry.0.pkg, path))
     }
   }
   let mut wi = 0
   while wi < work.length() {
-    let path = work[wi]
+    let (exporter_id, path) = work[wi]
     wi = wi + 1
     // A re-exported stdlib package is provided by the bundle — no extra edge.
     if is_stdlib_import(path) {
       continue
     }
-    let pkg_id = match packages.get_package_id_by_name(path) {
+    let pkg_id = match packages.get_package_id_for_import(exporter_id, path) {
       Some(id) => id
       None => continue
     }
@@ -503,13 +336,13 @@ fn add_reexport_edges(
     let dep = packages.get_package(pkg_id)
     let alias_name = unique_alias(packages.get_short_alias(pkg_id), used_alias)
     used_alias.add(alias_name)
-    let to = BuildTarget::{ pkg: pkg_id, kind: Primary }
-    let edge : DepEdge = { short_alias: alias_name, kind: Primary, cond }
+    let to = BuildTarget::{ pkg: pkg_id, kind: Primary, }
+    let edge : DepEdge = { short_alias: alias_name, kind: Primary, cond, }
     res.add_edge(from, to, edge)
     edges.push((to, edge))
     // Transitive: Q may itself re-export further packages.
     for next in dep.reexports {
-      work.push(next)
+      work.push((pkg_id, next))
     }
   }
 }

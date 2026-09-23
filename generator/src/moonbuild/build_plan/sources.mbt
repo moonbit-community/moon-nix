@@ -6,7 +6,7 @@
 ///|
 /// The source files that feed one package's compile/check.
 fn compile_sources(
-  pkg : @model.BuildPackage,
+  pkg : @model.Package,
   generated : Array[String],
   cfg : BuildConfig,
 ) -> Array[String] {
@@ -37,9 +37,7 @@ fn compile_sources(
   // order (not discovery order). moonc has no flag for this — it is moon's job to
   // order the input list (upstream's `--sort-input`). NB `String`'s default
   // `Compare` is length-first, so use `lexical_compare` for true alphabetical order.
-  if cfg.sort_input {
-    sources.sort_by(fn(a, b) { a.lexical_compare(b) })
-  }
+  sources.sort_by(fn(a, b) { a.lexical_compare(b) })
   sources
 }
 
@@ -48,7 +46,7 @@ fn compile_sources(
 /// structured. Each dependency's `.mi` path is resolved per the edge's target kind
 /// — a `sub-package: true` import points at the dependency's `_sub.mi`.
 fn collect_dep_imports(
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   deps_rel : @pkg_solve.DepRelationship,
   target : @pkg_solve.BuildTarget,
   cfg : BuildConfig,
@@ -71,7 +69,7 @@ fn collect_dep_imports(
 /// builds the path. Takes an explicit `imports` list so a sub-package's own (not
 /// the parent's) imports can be resolved.
 fn collect_std_imports(
-  packages : @model.BuildDiscovery,
+  packages : @model.PackageTable,
   imports : Array[@config.ImportSpec],
   cfg : BuildConfig,
 ) -> Array[@core.StdImport] {
@@ -90,7 +88,7 @@ fn collect_std_imports(
         Some(a) => a
         None => last
       }
-      out.push({ sub, last, import_alias })
+      out.push({ sub, last, import_alias, })
     }
   }
   out
@@ -106,7 +104,7 @@ fn is_test_file(name : String) -> Bool {
 /// conditional compilation, in precedence order:
 ///
 ///  1. An explicit `targets:` entry in `moon.pkg` is authoritative — the file
-///     compiles iff its cond-expr holds for (cfg.target, cfg.mode). This is how
+///     compiles iff its cond-expr holds for (cfg.target, Release). This is how
 ///     conditional sources are kept apart so they don't collide (e.g. two files
 ///     declaring the same type for different backends).
 ///  2. A recognized backend suffix in the FILENAME (`timer.js.mbt`) gates the file
@@ -120,7 +118,7 @@ fn is_test_file(name : String) -> Bool {
 ///
 /// A file with none of these compiles everywhere.
 fn target_excludes(
-  pkg : @model.BuildPackage,
+  pkg : @model.Package,
   file : String,
   cfg : BuildConfig,
 ) -> Bool {

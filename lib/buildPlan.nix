@@ -5,15 +5,23 @@
   sources,
   name ? "moon2nix-project",
   nativeBuildInputs ? [ ],
+  # A standard-library bundle built by another buildPlan call. The compiler and
+  # native runtime still come from toolchain; only the bundled core is replaced.
+  stdlib ? null,
 }:
 let
   inherit (pkgs) lib;
   data = plan;
+  kind = data.kind or "executable";
   validOutput =
     path: lib.hasPrefix "@build@/" path && !(builtins.elem ".." (lib.splitString "/" path));
   outputs = lib.concatMap (action: action.outputs) data.actions;
   valid =
     data.schemaVersion == 1
+    && builtins.elem kind [
+      "executable"
+      "bundle"
+    ]
     && data.sourceCount == builtins.length sources
     && builtins.length outputs == builtins.length (lib.unique outputs)
     && lib.all validOutput outputs
@@ -66,6 +74,9 @@ let
         // {
           "@toolchain@" = toString toolchain;
         }
+        // lib.optionalAttrs (stdlib != null) {
+          "@toolchain@/lib/core/_build/${data.target}/release/bundle" = toString stdlib;
+        }
         // builtins.listToAttrs (
           map (output: {
             name = output;
@@ -112,10 +123,23 @@ pkgs.runCommand name
     passthru = { inherit actions roots; };
   }
   (
-    ''
-      mkdir -p $out/bin
-    ''
-    + lib.concatMapStringsSep "\n" (root: ''
-      ln -s ${lib.escapeShellArg root} $out/bin/${lib.escapeShellArg (builtins.baseNameOf root)}
-    '') roots
+    if kind == "bundle" then
+      lib.concatMapStringsSep "\n" (
+        root:
+        let
+          destination = relative root;
+          artifact = "${actions.${producers.${root}}}/${destination}";
+        in
+        ''
+          mkdir -p "$out"/${lib.escapeShellArg (builtins.dirOf destination)}
+          ln -s ${lib.escapeShellArg artifact} "$out"/${lib.escapeShellArg destination}
+        ''
+      ) data.roots
+    else
+      ''
+        mkdir -p $out/bin
+      ''
+      + lib.concatMapStringsSep "\n" (root: ''
+        ln -s ${lib.escapeShellArg root} $out/bin/${lib.escapeShellArg (builtins.baseNameOf root)}
+      '') roots
   )
