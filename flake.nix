@@ -55,16 +55,6 @@
               ./examples/support
             ];
           };
-          project = platform.buildMoonPackage {
-            name = "moon2nix-with-deps";
-            src = ./test/with_deps;
-            moonMod = {
-              name = "moonbit-community/overlay_test";
-              version = "0.1.0";
-              deps."gmlewis/base64" = "0.16.12";
-            };
-            moonRegistryIndex = ./test/registry;
-          };
         in
         {
           formatting = pkgs.runCommand "moon2nix-formatting" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
@@ -95,11 +85,6 @@
           '';
           wasm = pkgs.runCommand "moon2nix-test-wasm" { } ''
             test "$(${toolchain}/bin/moonrun ${wasm}/hello_main.wasm)" = "hi from buildMoonbitPackage framework"
-            touch $out
-          '';
-          project = pkgs.runCommand "moon2nix-test-project" { } ''
-            expected=$(printf 'aGk=\n89')
-            test "$(${project}/bin/main)" = "$expected"
             touch $out
           '';
         }

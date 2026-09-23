@@ -1,12 +1,10 @@
-# Project and package builders; the caller supplies a complete toolchain.
+# Build-plan and package builders; the caller supplies a complete toolchain.
 { pkgs, toolchain }:
 let
   inherit (pkgs)
     lib
     fetchurl
     stdenv
-    symlinkJoin
-    makeWrapper
     zig
     clang
     pkg-config
@@ -29,23 +27,6 @@ let
       listAllDependencies
       lib
       stdenv
-      ;
-  };
-
-  bundleWithRegistry = import ./bundleWithRegistry.nix {
-    inherit
-      symlinkJoin
-      makeWrapper
-      toolchain
-      ;
-  };
-
-  buildMoonPackage = import ./buildMoonPackage.nix {
-    inherit
-      lib
-      stdenv
-      buildCachedRegistry
-      bundleWithRegistry
       ;
   };
 
@@ -89,8 +70,6 @@ in
   buildPlan = import ./buildPlan.nix { inherit pkgs toolchain; };
   inherit
     buildCachedRegistry
-    bundleWithRegistry
-    buildMoonPackage
     buildMoonbitPackage
     buildMoonbitInterface
     runMoonbitPrebuild

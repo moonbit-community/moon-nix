@@ -1,5 +1,0 @@
-import {
-  "moonbit-community/overlay_test" @lib,
-}
-
-pkgtype(kind: "executable")

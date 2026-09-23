@@ -76,17 +76,15 @@ exposes `actions` (by artifact ID) and `roots` for inspecting the graph.
 
 ## Existing builders
 
-The original `moonPlatform` implementation and tests have moved here. Initialize
-it with `mkMoon2Nix { pkgs = ...; toolchain = ...; }`, or without flakes:
+Initialize the build library with `mkMoon2Nix { pkgs = ...; toolchain = ...; }`,
+or without flakes:
 
 ```nix
 moon2nix = import ./default.nix { inherit pkgs toolchain; };
 ```
 
-- `buildMoonPackage`: run `moon build` for a project with explicit `moonMod`
-  metadata and a pinned `moonRegistryIndex`.
-- `buildCachedRegistry`, `bundleWithRegistry`: create an offline registry and
-  build home using the supplied complete toolchain.
+- `buildCachedRegistry`: fetch exact-version dependencies into an offline
+  registry used to build the generator.
 - `buildMoonbitPackage`, `buildMoonbitInterface`, `linkMoonbitProgram`: compile
   and link individual packages directly with `moonc`.
 - `buildMoonbitRuntime`, `makeMoonbitExecutable`, the C/Zig/Objective-C stub
@@ -100,7 +98,7 @@ fine-grained builders remain available as direct building blocks.
 
 ## Current boundaries
 
-This is an initial working extraction, not full opam-nix/cargo2nix feature parity.
+This is an initial implementation, without full opam-nix/cargo2nix feature parity.
 The generator handles a selected executable package with `wasm-gc`, `native`,
 or `js`. Automatic registry resolution, workspace discovery, test-plan export,
 cross compilation, and prebuild export are not implemented. Pass dependency
@@ -116,8 +114,8 @@ wired into the generator CLI's native toolchain configuration.
 
 `nix flake check` covers the generator, deterministic relocation, missing
 imports and unsupported/prebuild rejection, generated Wasm and Linux native
-plans across two modules, the migrated direct compiler builders, and a registry
-project build. The generated examples print `42`.
+plans across two modules and the direct compiler builders. The generated
+examples print `42`.
 
 The Nix builders use the [MIT license](LICENSE). The MoonBit generator sources
 use [Apache-2.0](generator/LICENSE).
