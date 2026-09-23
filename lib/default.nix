@@ -3,33 +3,11 @@
 let
   inherit (pkgs)
     lib
-    fetchurl
     stdenv
     zig
     clang
     pkg-config
     ;
-  fetchMoonPackage = import ./fetchMoonPackage.nix {
-    inherit fetchurl;
-  };
-
-  parseMoonIndex = import ./parseMoonIndex.nix {
-    inherit lib;
-  };
-
-  listAllDependencies = import ./listAllDependencies.nix {
-    inherit parseMoonIndex lib;
-  };
-
-  buildCachedRegistry = import ./buildCachedRegistry.nix {
-    inherit
-      fetchMoonPackage
-      listAllDependencies
-      lib
-      stdenv
-      ;
-  };
-
   # Fine-grained, per-package builders (the crate2nix/cargo2nix analogue): an
   # external planner emits one call per package, wiring deps through derivation
   # outputs. Toolchain-agnostic — the caller passes `toolchain`.
@@ -69,7 +47,6 @@ in
 {
   buildPlan = import ./buildPlan.nix { inherit pkgs toolchain; };
   inherit
-    buildCachedRegistry
     buildMoonbitPackage
     buildMoonbitInterface
     runMoonbitPrebuild
