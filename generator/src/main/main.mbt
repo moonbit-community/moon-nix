@@ -185,7 +185,7 @@ fn export_plan() -> Unit raise {
       }
     }
     let command : Json = match
-      @action_renderer.render_command(action, plan.env()) {
+      @build_plan.render_command(action, plan.env()) {
       @core.Exec(argv~, cwd~) =>
         {
           "kind": "exec",

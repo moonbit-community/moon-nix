@@ -6,7 +6,6 @@ import {
   "moon/moonbuild/analysis/discover",
   "moon/moonbuild/analysis/pkg_solve",
   "moon/moonbuild/build_plan",
-  "moon/moonbuild/action_renderer",
   "moon/moonbuild/core",
 }
 

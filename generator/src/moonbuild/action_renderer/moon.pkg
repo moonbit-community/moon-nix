@@ -1,6 +1,0 @@
-import {
-  "moon/moonbuild/core",
-  "moon/util/pathx",
-}
-
-supported_targets = "native"
