@@ -6,6 +6,7 @@ import {
   "moon/util/os",
   "moon/util/pathx",
   "moonbitlang/core/json",
+  "moonbitlang/x/os" @unix,
 }
 
 supported_targets = "native"

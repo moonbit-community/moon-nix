@@ -11,11 +11,8 @@ pub fn build_plan(
   main_fqn : String,
   cfg : BuildConfig,
 ) -> Plan raise BuildPlanError {
-  // Specialize the (condition-agnostic) dep graph to THIS build's backend + platform:
-  // drop every `import {} for "<other-backend>"` / `for "<other-os>"` edge so all
-  // downstream traversals (closure, compile imports, link order) see only the imports
-  // that apply now.
-  let deps_rel = deps_rel.specialize(cfg.backend.name(), cfg.target_platform)
+  // Select backend-specific imports before traversing dependencies.
+  let deps_rel = deps_rel.specialize(cfg.backend.name())
   let main_pkg_id = match packages.get_package_id_by_name(main_fqn) {
     Some(id) => id
     None => raise PackageNotFound(fqn=main_fqn)

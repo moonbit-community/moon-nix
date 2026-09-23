@@ -43,9 +43,9 @@ fn workspace_package_dir(cfg : BuildConfig, fqn : String) -> String {
 fn artifact_name(fqn : String) -> String {
   let (module_name, package_path) = split_fqn(fqn)
   if package_path == "" {
-    last_name_seg(module_name)
+    @pathx.last_seg(module_name)
   } else {
-    last_name_seg(package_path)
+    @pathx.last_seg(package_path)
   }
 }
 
@@ -81,9 +81,9 @@ fn artifact_stem(cfg : BuildConfig, fqn : String) -> String {
   match cfg.bundle_of {
     Some(m) =>
       if fqn == m {
-        cfg.out_dir + "/" + last_name_seg(m)
+        cfg.out_dir + "/" + @pathx.last_seg(m)
       } else if @pathx.strip_under(fqn, m) is Some(rel) {
-        @pathx.join([cfg.out_dir, rel, last_name_seg(rel)])
+        @pathx.join([cfg.out_dir, rel, @pathx.last_seg(rel)])
       } else {
         workspace_artifact_stem(cfg, fqn)
       }
@@ -152,22 +152,6 @@ fn native_exe_path(
   _bin_name : String?,
 ) -> String {
   artifact_stem(cfg, fqn) + ".exe"
-}
-
-///|
-/// The basename of a FILESYSTEM path (splits on BOTH `/` and `\`; see
-/// `@pathx.os_last_seg`). For LOGICAL module/package names use `last_name_seg`.
-fn last_seg(s : String) -> String {
-  @pathx.os_last_seg(s)
-}
-
-///|
-/// The last segment of a LOGICAL name (module/package path). Using an OS-aware
-/// basename here mis-splits on Windows (no `\` in `encoding/utf8` → the whole
-/// string is returned), which doubled std-bundle `.mi` paths
-/// (`encoding/utf8/encoding/utf8.mi`); `@pathx.last_seg` is POSIX-only.
-fn last_name_seg(s : String) -> String {
-  @pathx.last_seg(s)
 }
 
 ///|

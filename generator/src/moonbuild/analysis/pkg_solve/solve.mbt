@@ -77,7 +77,7 @@ fn solve_one_package(
   add_import_edges(res, packages, src, pkg_id, pkg, pkg.imports)
 
   // Conditional imports (`import {} for "<x>"`): add each set as edges tagged with
-  // its condition (backend OR platform), so `DepRelationship::specialize` keeps only
+  // its condition (backend), so `DepRelationship::specialize` keeps only
   // the matching ones for a build — keeping a leaf's other-backend/other-OS imports
   // out of THIS build's closure (so they don't poison its supported-targets).
   for section, specs in pkg.cond_imports {
@@ -88,7 +88,7 @@ fn solve_one_package(
       pkg_id,
       pkg,
       specs,
-      cond=Some(classify_dep_cond(section)),
+      cond=Some(Backend(section)),
     )
   }
 
@@ -264,19 +264,6 @@ fn add_import_edges(
     edges.push((to, edge))
   }
   add_reexport_edges(res, packages, from, seen_alias, edges, cond~)
-}
-
-///|
-/// Classify an `import {} for "<section>"` section string into its [`DepCond`]: a
-/// known backend name → [`Backend`], otherwise a platform spec → [`Platform`]. The
-/// two name-spaces are disjoint and the manifest decoder already validated the
-/// section, so the fall-through to `Platform` is safe.
-fn classify_dep_cond(section : String) -> DepCond {
-  if section is ("native" | "wasm-gc" | "wasm" | "js" | "llvm") {
-    Backend(section)
-  } else {
-    Platform(section)
-  }
 }
 
 ///|

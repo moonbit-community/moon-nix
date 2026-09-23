@@ -82,7 +82,7 @@ fn collect_std_imports(
     if @pkg_solve.is_stdlib_import(spec.path) &&
       packages.get_package_id_by_name(spec.path) is None {
       let sub = spec.path.strip_prefix("moonbitlang/core/").unwrap().to_owned()
-      let last = last_name_seg(sub)
+      let last = @pathx.last_seg(sub)
       // Explicit import_alias if declared (e.g. `immut/sorted_map`); else the last seg.
       let import_alias = match spec.import_alias {
         Some(a) => a
@@ -110,19 +110,13 @@ fn is_test_file(name : String) -> Bool {
 ///  2. A recognized backend suffix in the FILENAME (`timer.js.mbt`) gates the file
 ///     to that backend implicitly — MoonBit's filename convention, used by upstream
 ///     packages (e.g. `moonbitlang/async`) without listing them in `targets:`.
-///  3. An OS suffix in the FILENAME (`metal.macos.mbt`, `epoll.linux.mbt`,
-///     `iocp.windows.mbt`) gates the file to that OS — for native bindings whose
-///     implementation is platform-specific. The active OS is the native build's
-///     target OS (cross `--target-os`, else the host); wasm/js builds have no OS,
-///     so any OS-suffixed file is excluded there.
-///
 /// A file with none of these compiles everywhere.
 fn target_excludes(
   pkg : @model.Package,
   file : String,
   cfg : BuildConfig,
 ) -> Bool {
-  match pkg.targets.get(last_seg(file)) {
+  match pkg.targets.get(@pathx.last_seg(file)) {
     Some(expr) =>
       return !@config.cond_eval(expr, cfg.backend.name(), "release")
     None => ()
@@ -131,32 +125,7 @@ fn target_excludes(
     Some(b) => if b != cfg.backend.name() { return true }
     None => ()
   }
-  match filename_os(file) {
-    Some(file_os) => active_os(cfg) != Some(file_os)
-    None => false
-  }
-}
-
-///|
-/// The OS a native/llvm build targets (from the resolved `target_platform`), or
-/// `None` for a wasm/js build (no native OS).
-fn active_os(cfg : BuildConfig) -> @os.OsKind? {
-  match cfg.backend {
-    Native(_) | Llvm(_) => Some(cfg.target_platform.os)
-    _ => None
-  }
-}
-
-///|
-/// If `file`'s basename carries an OS suffix before `.mbt` (`worker.linux.mbt` →
-/// `Linux`), return that OS; such a file compiles ONLY for that OS. `None` for an
-/// ordinary name or a non-OS final stem (backend suffixes parse to `None` here —
-/// they are a disjoint set handled by [`filename_backend`]).
-fn filename_os(file : String) -> @os.OsKind? {
-  let base = last_seg(file)
-  guard base.rev_split_once(".") is Some((stem, "mbt")) else { return None }
-  guard stem.rev_split_once(".") is Some((_, tok)) else { return None }
-  @os.OsKind::parse(tok.to_owned())
+  false
 }
 
 ///|
@@ -172,7 +141,7 @@ let backend_suffixes : Array[String] = [
 /// ONLY for that backend. Returns `None` for an ordinary `.mbt` name, or a dotted
 /// name whose final stem segment isn't a recognized backend (`my.config.mbt`).
 fn filename_backend(file : String) -> String? {
-  let base = last_seg(file)
+  let base = @pathx.last_seg(file)
   guard base.rev_split_once(".") is Some((stem, "mbt")) else { return None }
   guard stem.rev_split_once(".") is Some((_, tok)) else { return None }
   let tok = tok.to_owned()

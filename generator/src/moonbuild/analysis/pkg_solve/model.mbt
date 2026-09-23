@@ -35,14 +35,9 @@ pub fn BuildTarget::primary(pkg : @model.PackageId) -> BuildTarget {
 }
 
 ///|
-/// The condition guarding a conditional dependency edge (`import {} for "<x>"`):
-/// either a backend name (`native`/`wasm-gc`/…) or a platform spec
-/// (`linux`/`windows-gnu`/…). The two name-spaces don't overlap, so the section
-/// string classifies unambiguously. [`DepRelationship::specialize`] keeps the edge
-/// only when the active build matches.
+/// A backend condition guarding a dependency edge.
 pub(all) enum DepCond {
   Backend(String) //  import {} for "native"
-  Platform(String) // import {} for "windows-gnu"
 }
 
 ///|
@@ -53,7 +48,7 @@ pub(all) struct DepEdge {
   kind : TargetKind
   /// `None` = an unconditional import. `Some(cond)` = a conditional import
   /// (`import {} for "<x>"`) — the edge exists only when the build matches `cond`
-  /// (backend or platform). [`DepRelationship::specialize`] drops non-matching ones.
+  /// (backend). [`DepRelationship::specialize`] drops non-matching ones.
   cond : DepCond?
 }
 
@@ -167,19 +162,11 @@ pub fn DepRelationship::add_edge(
 }
 
 ///|
-/// A build-specialized view of the graph: every unconditional edge is kept, and
-/// each conditional edge (`cond = Some(...)`, from `import {} for "<x>"`) is kept
-/// only when the active build matches — a `Backend(b)` edge when `b == backend`, a
-/// `Platform(p)` edge when the active `platform` matches `p`. Build planning calls
-/// this once with the active backend + platform so all downstream traversals
-/// (closure, compile imports, link order) see exactly the edges that apply —
-/// keeping a leaf package's other-backend/other-OS imports out of THIS build's
-/// closure (so they don't poison supported-targets). `virt_impl` / `virtual_users`
-/// are condition-agnostic and carried through.
+/// Keep unconditional edges and imports for the selected backend.
+/// Virtual-package relationships are carried through unchanged.
 pub fn DepRelationship::specialize(
   self : DepRelationship,
   backend : String,
-  platform : @os.Platform,
 ) -> DepRelationship {
   if !self.has_conditional_edges {
     return self
@@ -188,7 +175,7 @@ pub fn DepRelationship::specialize(
   for t, adj in self.dep_graph {
     let mut dropped = false
     for entry in adj {
-      if !dep_cond_matches(entry.1.cond, backend, platform) {
+      if !dep_cond_matches(entry.1.cond, backend) {
         dropped = true
         break
       }
@@ -204,7 +191,7 @@ pub fn DepRelationship::specialize(
     } else {
       let kept : Array[(BuildTarget, DepEdge)] = []
       for entry in adj {
-        if dep_cond_matches(entry.1.cond, backend, platform) {
+        if dep_cond_matches(entry.1.cond, backend) {
           kept.push(entry)
           if entry.1.cond is Some(_) {
             r.has_conditional_edges = true
@@ -233,14 +220,11 @@ pub fn DepRelationship::specialize(
 fn dep_cond_matches(
   cond : DepCond?,
   backend : String,
-  platform : @os.Platform,
 ) -> Bool {
   match cond {
     None => true
     Some(Backend(b)) => b == backend
-    Some(Platform(p)) =>
-      // unparseable platform spec -> drop the edge conservatively
-      @os.Platform::parse(p) is Some(c) && platform.matches(c)
+
   }
 }
 

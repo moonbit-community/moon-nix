@@ -21,55 +21,6 @@ pub fn last_seg(name : String) -> String {
 }
 
 ///|
-/// The basename of a real FILESYSTEM path: splits on BOTH `/` and `\`, so it is
-/// correct on Windows regardless of which separator a path carries (mymoon mixes
-/// them — a `\`-rooted cwd from getcwd joined with `/`-built relatives, plus
-/// `\`-joined directory listings). Use this for OS paths; use [`last_seg`] for
-/// LOGICAL module/package names (which are `/`-only, and which this would
-/// over-split if a name legitimately contained a `\`).
-///
-/// We split explicitly rather than delegate to `moonbitlang/x/path`'s basename,
-/// whose POSIX-vs-Win32 behavior is selected at COMPILE time — a seed not built
-/// with `platform=windows` would get the POSIX basename and silently fail to
-/// strip a `\`-prefixed name.
-///
-/// # Example
-/// ```mbt check
-/// test {
-///   inspect(@pathx.os_last_seg("C:\\proj/_build/foo.mi"), content="foo.mi")
-/// }
-/// ```
-pub fn os_last_seg(path : String) -> String {
-  let after_fwd = match path.rev_split_once("/") {
-    Some((_, last)) => last.to_owned()
-    None => path
-  }
-  match after_fwd.rev_split_once("\\") {
-    Some((_, last)) => last.to_owned()
-    None => after_fwd
-  }
-}
-
-///|
-/// The parent of a logical name (everything before the last `/`). When there is
-/// no `/`, returns `none` (default `"."`, matching POSIX `dirname`).
-///
-/// # Example
-/// ```mbt check
-/// test {
-///   inspect(@pathx.parent("a/b/c"), content="a/b")
-///   inspect(@pathx.parent("solo"), content=".")
-///   inspect(@pathx.parent("solo", none=""), content="")
-/// }
-/// ```
-pub fn parent(name : String, none? : String = ".") -> String {
-  match name.rev_split_once("/") {
-    Some((dir, _)) => dir.to_owned()
-    None => none
-  }
-}
-
-///|
 /// Join logical segments with `/`, dropping empty segments
 /// (`["a", "", "b/c"]` -> `"a/b/c"`). POSIX-only; segments should not carry
 /// surrounding slashes.
@@ -85,27 +36,6 @@ pub fn join(segments : Array[String]) -> String {
 }
 
 ///|
-/// `(stem, ext?)` of the last segment, split on its final `.`
-/// (`foo.core` -> `("foo", Some("core"))`, `foo` -> `("foo", None)`). The
-/// directory prefix, if any, is dropped — callers pass bare artifact filenames.
-///
-/// # Example
-/// ```mbt check
-/// test {
-///   let (stem, ext) = @pathx.stem_ext("foo.core")
-///   inspect(stem, content="foo")
-///   inspect(ext.unwrap(), content="core")
-/// }
-/// ```
-pub fn stem_ext(name : String) -> (String, String?) {
-  let base = last_seg(name)
-  match base.rev_split_once(".") {
-    Some((stem, e)) => (stem.to_owned(), Some(e.to_owned()))
-    None => (base, None)
-  }
-}
-
-///|
 /// The last segment without its extension (`a/b.core` -> `b`). The directory
 /// prefix is dropped.
 ///
@@ -116,7 +46,11 @@ pub fn stem_ext(name : String) -> (String, String?) {
 /// }
 /// ```
 pub fn stem(name : String) -> String {
-  stem_ext(name).0
+  let base = last_seg(name)
+  match base.rev_split_once(".") {
+    Some((stem, _)) => stem.to_owned()
+    None => base
+  }
 }
 
 ///|

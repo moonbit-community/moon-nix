@@ -167,7 +167,6 @@ pub fn Backend::parse(s : String) -> Backend {
 /// Knobs that shape the produced commands but are not part of the source tree.
 pub(all) struct BuildConfig {
   backend : Backend
-  target_platform : @os.Platform
   out_dir : String
   /// A module bundle uses paths relative to this module; ordinary builds include the module name.
   bundle_of : String?

@@ -17,7 +17,7 @@ pub fn bundle_plan(
   deps_rel : @pkg_solve.DepRelationship,
   cfg : BuildConfig,
 ) -> Plan raise BuildPlanError {
-  let deps_rel = deps_rel.specialize(cfg.backend.name(), cfg.target_platform)
+  let deps_rel = deps_rel.specialize(cfg.backend.name())
   // Roots: every package of the root module.
   let roots : Array[@pkg_solve.BuildTarget] = []
   for pkg in packages.all_packages() {
@@ -66,7 +66,7 @@ pub fn bundle_plan(
     Some(m) => m
     None => packages.get_package(roots[0].pkg).module_name
   }
-  let out = cfg.out_dir + "/" + last_name_seg(module_name) + ".core"
+  let out = cfg.out_dir + "/" + @pathx.last_seg(module_name) + ".core"
   actions[out] = {
     primary_output: out,
     outputs: [out],

@@ -70,6 +70,23 @@ Use `native` to generate a native plan; its output is `bin/main.exe` on Linux.
 plan and regenerate the plan when the toolchain, manifests, source-file list,
 imports, or selected target changes.
 
+The generated `moon.nix` contains one backend-specific plan, independent of the
+machine that generated it. Nix supplies the native toolchain. Use `stdenv` and
+`nativeBuildInputs` to select the compiler and dependencies. `actionOverrides`
+returns derivation attributes for each action, allowing platform-specific flags
+and environment variables:
+
+```nix
+actionOverrides = action: {
+  NIX_CFLAGS_COMPILE = pkgs.lib.optionalString pkgs.stdenv.hostPlatform.isDarwin
+    "-D_DARWIN_C_SOURCE";
+};
+```
+
+Overrides are applied after the default attributes. Setting `nativeBuildInputs`
+in `actionOverrides` replaces that action's complete tool list; use the top-level
+`nativeBuildInputs` argument to add dependencies instead.
+
 Plans use `@src0@`, `@src1@`, `@toolchain@`, and `@build@` placeholders rather
 than machine-specific paths. Nix maps each produced artifact to its owning
 derivation, including transitive `.mi` interfaces needed by `-all-pkgs`.

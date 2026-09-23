@@ -69,24 +69,6 @@ fn cstub_action(
     ".o"
   let cc = effective_stub_cc(nc, native_link)
   let cc_flags = split_words(native_link.bind(fn(n) { n.stub_cc_flags }))
-  // macOS C-stub portability shims, gated on the BUILD host (a native compile
-  // targets the host).
-  if @os.os_kind() is Macos {
-    // (1) macOS hides POSIX-extension symbols (e.g. the real
-    //     `posix_spawn_file_actions_addchdir_np`) unless `_DARWIN_C_SOURCE` is set;
-    //     the stock macOS toolchain defines it, a bare clang / `zig cc` does not.
-    cc_flags.push("-D_DARWIN_C_SOURCE")
-    // (2) moonbitlang/async's `thread_pool.c` unconditionally does
-    //     `#define posix_spawn_file_actions_addchdir_np posix_spawn_file_actions_addchdir`
-    //     — correct on Linux (glibc's name), but on macOS it redirects the call to
-    //     the non-existent non-`_np` symbol. Mapping the non-`_np` name BACK to
-    //     `_np` lets the preprocessor's self-reference rule resolve the call to the
-    //     real macOS function (which (1) makes visible). Harmless elsewhere: the
-    //     non-`_np` name does not exist on macOS, so `_np` is the right target.
-    cc_flags.push(
-      "-Dposix_spawn_file_actions_addchdir=posix_spawn_file_actions_addchdir_np",
-    )
-  }
   {
     primary_output: out,
     outputs: [out],

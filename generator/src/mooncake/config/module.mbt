@@ -1155,25 +1155,11 @@ pub fn decode_pkg(dsl : Array[(String, Value)]) -> MoonPkg raise DecodeError {
           _ => raise WrongType(field="options", expected="object")
         }
       _ =>
-        // Conditional imports: the parser lowers `import {} for "<cond>"` to a
-        // `for-<cond>` key (test/wbtest handled above). The condition is either a
-        // known backend (`native`/…) or a platform spec (`linux`/`windows-gnu`/…);
-        // both name-spaces are disjoint. Anything else is an ignored unknown
-        // statement. The backend-vs-platform classification happens later, in
-        // pkg_solve; here we only validate + collect.
+        // Backend-specific imports retained by the generator.
         match key.strip_prefix("for-") {
           Some(section_view) => {
             let section = section_view.to_owned()
-            // A backend, or a platform spec `<os>[-<toolchain>]`. We validate only
-            // the `<os>` head here (the toolchain part + the precise parse live in
-            // `@os.Platform`, a native-only package `config` must not depend on —
-            // it stays backend-agnostic). pkg_solve does the full classification.
-            let os_head = match section.split_once("-") {
-              Some((head, _)) => head
-              None => section
-            }
-            if section is ("native" | "wasm-gc" | "wasm" | "js" | "llvm") ||
-              os_head is ("linux" | "macos" | "windows") {
+            if section is ("native" | "wasm-gc" | "wasm" | "js" | "llvm") {
               match v {
                 Array(items) => {
                   let arr = cond_imports.get_or_init(section, () => [])
@@ -1183,6 +1169,8 @@ pub fn decode_pkg(dsl : Array[(String, Value)]) -> MoonPkg raise DecodeError {
                 }
                 _ => raise WrongType(field=key, expected="array")
               }
+            } else {
+              raise WrongType(field=key, expected="backend import condition")
             }
           }
           None => ()

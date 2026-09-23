@@ -12,12 +12,12 @@ pub(open) trait Registry {
 
 ///|
 fn mvs_timing_enabled() -> Bool {
-  @os.getenv("MYMOON_TIMING") is Some("1")
+  @unix.getenv("MYMOON_TIMING") is Some("1")
 }
 
 ///|
 fn mvs_timing_ms(start : Int64) -> Int64 {
-  (@os.now_ns() - start) / 1_000_000
+  (@unix.now_ns() - start) / 1_000_000
 }
 
 ///|
@@ -79,7 +79,7 @@ pub fn mvs_resolve(
   skip? : Set[String] = Set([]),
   local_reqs? : Map[String, Array[(String, String)]] = {},
 ) -> Map[String, Array[String]] raise ResolveError {
-  let t_total = @os.now_ns()
+  let t_total = @unix.now_ns()
   // name -> (version -> dependants) for every min-satisfying version reached.
   let gathered : Map[String, Map[String, Array[String]]] = Map([])
   let visited : Set[String] = Set([]) // `name@version` already expanded
@@ -107,7 +107,7 @@ pub fn mvs_resolve(
       }
       continue
     }
-    let t_lookup = @os.now_ns()
+    let t_lookup = @unix.now_ns()
     let all_versions = registry.all_versions_of(name)
     registry_calls += 1
     registry_ms += mvs_timing_ms(t_lookup)

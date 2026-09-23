@@ -1,7 +1,7 @@
 ///|
 fn fail(message : String) -> Unit {
   @os.eprintln(message)
-  @os.exit(1)
+  @unix.exit(1)
 }
 
 ///|
@@ -52,7 +52,7 @@ fn main {
 
 ///|
 fn export_plan() -> Unit raise {
-  let args = @os.args()
+  let args = @unix.args()
   guard args.length() >= 5 else {
     fail(
       "usage: moon2nix ROOT MAIN_PACKAGE TARGET TOOLCHAIN [--registry-index INDEX_DIR] [DEPENDENCY_ROOT ...]\n       moon2nix bundle ROOT TARGET TOOLCHAIN [--registry-index INDEX_DIR] [DEPENDENCY_ROOT ...]",
@@ -114,7 +114,6 @@ fn export_plan() -> Unit raise {
   }
   let cfg : @build_plan.BuildConfig = {
     backend,
-    target_platform: @os.Platform::host(),
     out_dir: "/__moon2nix_build",
     bundle_of: if is_bundle {
       Some(main)
@@ -184,8 +183,7 @@ fn export_plan() -> Unit raise {
         }
       }
     }
-    let command : Json = match
-      @build_plan.render_command(action, plan.env()) {
+    let command : Json = match @build_plan.render_command(action, plan.env()) {
       @core.Exec(argv~, cwd~) =>
         {
           "kind": "exec",
@@ -216,7 +214,6 @@ fn export_plan() -> Unit raise {
   let result : Map[String, Json] = {
     "schemaVersion": 1,
     "target": target.to_json(),
-    "platform": @os.Platform::host().tag().to_json(),
     "sourceCount": dirs.length().to_json(),
     "actions": actions.to_json(),
     "packages": listing.to_json(),

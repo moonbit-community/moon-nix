@@ -1,10 +1,6 @@
-// Logical path-string utilities: POSIX-only basename/dirname/join + extension
-// manipulation. Pure `moonbitlang/core` String API,
-// backend-agnostic.
+// Logical path-string utilities built from core String operations.
 //
 // These operate on LOGICAL names (module/package paths, artifact stems) which are
-// ALWAYS `/`-separated regardless of OS. For real OS filesystem paths use
-// `moonbitlang/x/path` instead — its OS-aware basename/dirname are correct there
-// but would mis-split a logical name like `encoding/utf8` on Windows.
+// ALWAYS `/`-separated regardless of OS. The exporter supports Linux and macOS.
 import {
 }

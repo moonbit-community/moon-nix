@@ -3,6 +3,7 @@ import {
   "moon/mooncake/parse",
   "moon/util/os",
   "moonbitlang/core/string",
+  "moonbitlang/x/os" @unix,
 }
 
 supported_targets = "native"

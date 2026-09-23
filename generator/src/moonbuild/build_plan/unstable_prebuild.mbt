@@ -53,19 +53,19 @@ fn run_unstable_prebuild(
 ) -> Map[String, Array[String]] raise BuildPlanError {
   // Dispatch the interpreter by script extension (overridable for hermetic envs).
   let interp = if script.has_suffix(".py") {
-    @os.getenv_or("MOON_PREBUILD_PYTHON", "python3")
+    @unix.getenv_or("MOON_PREBUILD_PYTHON", "python3")
   } else {
     // `.js` / `.mjs` / `.cjs` (and anything else) → node, like the official runner.
-    @os.getenv_or("MOON_PREBUILD_NODE", "node")
+    @unix.getenv_or("MOON_PREBUILD_NODE", "node")
   }
   // The JSON payload on the child's stdin. We keep `env` empty: the child inherits
   // our process environment, and the real scripts read `payload.env[x] ?? process.env[x]`,
   // so the inherited env covers MOON_CC / PATH / OS without us enumerating it. Writing
   // it to a file (rather than inheriting our stdin) is what stops a script that reads
   // fd 0 from blocking on an interactive TTY.
-  let tmp = @os.getenv_or("TMPDIR", "/tmp") + "/mymoon-prebuild"
+  let tmp = @unix.getenv_or("TMPDIR", "/tmp") + "/mymoon-prebuild"
   @os.mkdir_p(tmp)
-  let payload_path = "\{tmp}/\{@os.getpid()}-\{@os.now_ns()}.json"
+  let payload_path = "\{tmp}/\{@unix.getpid()}-\{@unix.now_ns()}.json"
   @os.write_file(payload_path, "{\"env\":{}}")
   // Run with cwd = module root (scripts like openssl's build.py use cwd-relative
   // paths). No per-child cwd primitive, so chdir around the call (plan is single-threaded).
