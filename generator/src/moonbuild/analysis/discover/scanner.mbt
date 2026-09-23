@@ -12,16 +12,13 @@ pub(all) struct SourceFacts {
 }
 
 ///|
-/// Reads a source file and returns its [`SourceFacts`]. The discoverer calls this
-/// once per `.mbt`; an implementation may content-address the result so an
-/// unchanged file is never re-read across builds.
+/// Reads a source file and returns its [`SourceFacts`].
 pub(open) trait SourceScanner {
   fn scan(Self, path : String) -> SourceFacts
 }
 
 ///|
-/// The trivial scanner: read the file and scan it, every time. The default when
-/// no caching is wired (tests, `discover_local_module` without a cache).
+/// Read the file and scan it every time.
 pub struct PlainScanner {}
 
 ///|
@@ -30,82 +27,6 @@ pub extend PlainScanner with SourceScanner::{scan}
 ///|
 pub impl SourceScanner for PlainScanner with fn scan(_self, path) {
   scan_source(@os.read_file(path))
-}
-
-///|
-/// A disk-backed scanner that content-addresses [`SourceFacts`] by `(path, mtime,
-/// size)` over a shared [`@statcache.StatCache`] — the SAME cheap `(mtime, size)`
-/// mechanism the rebuilder's content-fingerprint cache uses. An unchanged source file
-/// (mtime AND size both match) returns its facts WITHOUT re-reading or re-scanning; a
-/// changed one falls through to a full read + scan and re-records.
-///
-/// Keying on `(mtime, size)` rather than a content digest is the deliberate trade: it
-/// avoids reading the file's bytes when unchanged — the very I/O we want to skip — at
-/// the cost of NOT sharing facts across identical files / renames (cheap to recompute,
-/// rare). The residual unsoundness (same mtime AND size but different content) is the
-/// `@statcache` window, shared with the rebuilder.
-pub struct CachedScanner {
-  cache : @statcache.StatCache
-}
-
-///|
-pub fn CachedScanner::new(root : String) -> CachedScanner {
-  { cache: @statcache.StatCache::new(root) }
-}
-
-///|
-pub extend CachedScanner with SourceScanner::{scan}
-
-///|
-pub impl SourceScanner for CachedScanner with fn scan(self, path) {
-  let mt = @os.mtime(path)
-  let sz = @os.size(path)
-  // Fast path: a recorded payload whose `(mtime, size)` still matches → decode its
-  // aliases, no source read. A non-matching tag falls through to a fresh scan, so
-  // a stale entry can never mask un-scanned facts.
-  match self.cache.lookup(path, mt, sz) {
-    Some(payload) => {
-      let parts : Array[String] = []
-      for p in payload.split(" ") {
-        if p.length() > 0 {
-          parts.push(p.to_owned())
-        }
-      }
-      if parts.length() >= 1 && parts[0].length() == 3 {
-        let b = parts[0].to_array()
-        // Tags `3`/`4` are older formats: `<tag><inline><doctest> <reexport>*`
-        // with optional `| <linkreq>*`. Ignore the obsolete facts.
-        if b[0] == '4' || b[0] == '3' {
-          let reexports : Array[String] = []
-          for i in 1..<parts.length() {
-            if parts[i] == "|" {
-              break
-            } else {
-              reexports.push(parts[i])
-            }
-          }
-          return SourceFacts::{ reexports, }
-        }
-      }
-      if parts.length() >= 1 && parts[0] == "5" {
-        let reexports : Array[String] = []
-        for i in 1..<parts.length() {
-          reexports.push(parts[i])
-        }
-        return SourceFacts::{ reexports, }
-      }
-    }
-    None => ()
-  }
-  // Miss: read once, scan once, record payload
-  // `5 <alias>*`.
-  let facts = scan_source(@os.read_file(path))
-  let mut payload = "5"
-  for a in facts.reexports {
-    payload = payload + " " + a
-  }
-  self.cache.record(path, mt, sz, payload)
-  facts
 }
 
 ///|

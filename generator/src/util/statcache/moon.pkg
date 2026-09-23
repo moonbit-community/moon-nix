@@ -1,6 +1,0 @@
-import {
-  "moon/util/os",
-  "moon/util/digest",
-}
-
-supported_targets = "native"

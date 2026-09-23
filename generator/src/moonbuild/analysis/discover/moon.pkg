@@ -4,7 +4,6 @@ import {
   "moon/util/parse",
   "moon/util/config",
   "moon/util/pathx",
-  "moon/util/statcache",
 }
 
 supported_targets = "native"

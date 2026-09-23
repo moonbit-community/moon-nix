@@ -5,7 +5,6 @@ let
     registryIndexSrc = ./generator/registry;
     moonMod.deps = {
       "moonbitlang/async" = "0.21.2";
-      "tonyfettes/xxh64" = "0.1.0";
     };
   };
   x = pkgs.fetchFromGitHub {

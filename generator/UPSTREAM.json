@@ -10,15 +10,14 @@
     "moonbuild/engine/executor",
     "util/cc",
     "util/config",
-    "util/digest",
     "util/os",
     "util/parse",
-    "util/pathx",
-    "util/statcache"
+    "util/pathx"
   ],
   "changes": [
     "Excluded upstream test sources and test-only imports; added a standalone export CLI.",
-    "Removed trailing whitespace in four upstream source files."
+    "Removed trailing whitespace in four upstream source files.",
+    "Omitted the unused CachedScanner and its statcache, digest, and xxh64 dependencies."
   ],
   "adaptedFunctions": [
     "src/main/session.mbt: provision_local_inputs / split_listing_fqn (package listing)"
