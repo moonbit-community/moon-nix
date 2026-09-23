@@ -4,7 +4,7 @@ import {
   "moon/moonbuild/core",
   "moon/mooncake/config",
   "moon/util/os",
-  "moon/util/pathx",
+  "moonbitlang/x/path/posix",
   "moonbitlang/core/json",
   "moonbitlang/x/os" @unix,
 }

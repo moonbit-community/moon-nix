@@ -91,7 +91,7 @@ fn legacy_exit_code(code : Int) -> Int {
 ///|
 pub fn read_file(path : String) -> String {
   @encoding/utf8.decode_lossy(@unix/fs.read_file(path)[:]) catch {
-    _ => ""
+    _ => abort("failed to read file: " + path)
   }
 }
 
@@ -126,15 +126,15 @@ pub(all) enum DirEntry {
 
 ///|
 /// List the immediate children of a directory (names only, not recursive).
-/// `.` and `..` are excluded; an unreadable directory yields an empty list.
+/// `.` and `..` are excluded; unreadable directories are errors.
 pub fn list_dir(path : String) -> Array[DirEntry] {
   let names = @unix/fs.readdir(path) catch {
-    _ => return []
+    _ => abort("failed to list directory: " + path)
   }
   let entries : Array[DirEntry] = []
   for name in names {
     let kind = @unix/fs.kind(path + "/" + name) catch {
-      _ => @unix/fs.Unknown
+      _ => abort("failed to inspect directory entry: " + path + "/" + name)
     }
     entries.push(
       match kind {

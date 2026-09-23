@@ -82,7 +82,7 @@ fn collect_std_imports(
     if @pkg_solve.is_stdlib_import(spec.path) &&
       packages.get_package_id_by_name(spec.path) is None {
       let sub = spec.path.strip_prefix("moonbitlang/core/").unwrap().to_owned()
-      let last = @pathx.last_seg(sub)
+      let last = @posix.Path::basename(sub).to_owned()
       // Explicit import_alias if declared (e.g. `immut/sorted_map`); else the last seg.
       let import_alias = match spec.import_alias {
         Some(a) => a
@@ -116,9 +116,8 @@ fn target_excludes(
   file : String,
   cfg : BuildConfig,
 ) -> Bool {
-  match pkg.targets.get(@pathx.last_seg(file)) {
-    Some(expr) =>
-      return !@config.cond_eval(expr, cfg.backend.name(), "release")
+  match pkg.targets.get(@posix.Path::basename(file).to_owned()) {
+    Some(expr) => return !@config.cond_eval(expr, cfg.backend.name(), "release")
     None => ()
   }
   match filename_backend(file) {
@@ -141,7 +140,7 @@ let backend_suffixes : Array[String] = [
 /// ONLY for that backend. Returns `None` for an ordinary `.mbt` name, or a dotted
 /// name whose final stem segment isn't a recognized backend (`my.config.mbt`).
 fn filename_backend(file : String) -> String? {
-  let base = @pathx.last_seg(file)
+  let base = @posix.Path::basename(file).to_owned()
   guard base.rev_split_once(".") is Some((stem, "mbt")) else { return None }
   guard stem.rev_split_once(".") is Some((_, tok)) else { return None }
   let tok = tok.to_owned()

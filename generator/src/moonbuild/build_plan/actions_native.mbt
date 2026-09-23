@@ -2,9 +2,18 @@
 // `Native(Some(nc))`
 
 ///|
+fn path_stem(path : String) -> String {
+  let base = @posix.Path::basename(path).to_owned()
+  match base.rev_split_once(".") {
+    Some((stem, _)) => stem.to_owned()
+    None => base
+  }
+}
+
+///|
 /// Archive the `.o` stubs for a package.
 fn archive_path(cfg : BuildConfig, fqn : String) -> String {
-  @pathx.join([package_dir(cfg, fqn), "lib" + artifact_name(fqn) + ".a"])
+  @posix.Path::join(package_dir(cfg, fqn), "lib" + artifact_name(fqn) + ".a").0
 }
 
 ///|
@@ -24,7 +33,7 @@ fn runtime_actions(
   let acts : Array[@core.Action] = []
   for src in nc.runtime_sources() {
     let out = if split {
-      cfg.out_dir + "/runtime-" + @pathx.stem(src) + ".o"
+      cfg.out_dir + "/runtime-" + path_stem(src) + ".o"
     } else {
       cfg.out_dir + "/runtime.o"
     }
@@ -65,20 +74,14 @@ fn cstub_action(
   stub : String,
   native_link : @config.NativeLinkConfig?,
 ) -> @core.Action {
-  let out = @pathx.join([package_dir(cfg, fqn), @pathx.stem(stub)]) +
-    ".o"
+  let out = @posix.Path::join(package_dir(cfg, fqn), path_stem(stub)).0 + ".o"
   let cc = effective_stub_cc(nc, native_link)
   let cc_flags = split_words(native_link.bind(fn(n) { n.stub_cc_flags }))
   {
     primary_output: out,
     outputs: [out],
     inputs: [stub],
-    spec: @core.BuildCStub(
-      cc~,
-      include_dir=nc.include_dir(),
-      stub~,
-      cc_flags~,
-    ),
+    spec: @core.BuildCStub(cc~, include_dir=nc.include_dir(), stub~, cc_flags~),
   }
 }
 
@@ -96,8 +99,7 @@ fn objcstub_action(
   native_link : @config.NativeLinkConfig?,
   cpp : Bool,
 ) -> @core.Action {
-  let out = @pathx.join([package_dir(cfg, fqn), @pathx.stem(stub)]) +
-    ".o"
+  let out = @posix.Path::join(package_dir(cfg, fqn), path_stem(stub)).0 + ".o"
   let cc = effective_stub_cc(nc, native_link)
   {
     primary_output: out,
@@ -145,8 +147,7 @@ fn zigstub_action(
   zig : String,
   modules : Array[(String, String)],
 ) -> @core.Action {
-  let out = @pathx.join([package_dir(cfg, fqn), @pathx.stem(stub)]) +
-    ".o"
+  let out = @posix.Path::join(package_dir(cfg, fqn), path_stem(stub)).0 + ".o"
   // Each translated module's `.zig` is a build input → its TranslateC action must
   // run first, and a re-translation re-builds this stub (digest picks it up).
   let inputs = [stub, ..modules.map(fn(m) { m.1 })]
@@ -196,7 +197,7 @@ fn stub_object_action(
 /// trailing `.h`/`.hpp`/`.hh` removed (`moonbit.h` → `moonbit`). A stub then writes
 /// `@import("moonbit")`.
 fn zig_module_name(header : String) -> String {
-  @pathx.stem(header)
+  path_stem(header)
 }
 
 ///|
@@ -215,7 +216,7 @@ fn translatec_action(
   let name = zig_module_name(header)
   // Single `.zig` extension (not `.translated.zig`): a double dot confuses
   // stem/ext splitting. `_tc` keeps it visibly a translate-c product.
-  let out = @pathx.join([package_dir(cfg, fqn), name + "_tc.zig"])
+  let out = @posix.Path::join(package_dir(cfg, fqn), name + "_tc.zig").0
   let act : @core.Action = {
     primary_output: out,
     outputs: [out],

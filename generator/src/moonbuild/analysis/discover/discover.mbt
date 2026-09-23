@@ -25,7 +25,9 @@ pub fn discover_modules(
   // its ctx; NO tree walk), so module ids stay deterministic in `dirs` order.
   let mods : Array[(ModuleCtx, String)] = []
   for i in 0..<dirs.length() {
-    mods.push(register_module(res, dirs[i], versioned=i > 0 && !module_edges.is_empty()))
+    mods.push(
+      register_module(res, dirs[i], versioned=i > 0 && !module_edges.is_empty()),
+    )
   }
   guard mods.length() > 0 else { return res }
   // The ROOT module (dirs[0]) is walked in full: `moon check`/`build`/`test` operate
@@ -89,11 +91,13 @@ fn locate_dep_package(
       Some(deps) => deps.get(name) == Some(ctx.version)
       None => module_edges.is_empty()
     }
-    if !same_module && !edge_matches { continue }
+    if !same_module && !edge_matches {
+      continue
+    }
     let rel : Array[String]? = if fqn == name {
       Some([])
     } else {
-      match @pathx.strip_under(fqn, name) {
+      match fqn.strip_prefix(name + "/").map(rest => rest.to_owned()) {
         Some(rest) =>
           Some(rest.split("/").map(seg => seg.to_owned()).to_array())
         None => None
@@ -144,7 +148,8 @@ fn demand_discover_deps(
     seen.add(request_key)
     // Not a known dependency package (stdlib / root-module edge) — skip; the solver
     // resolves stdlib via the bundle, and root packages are already discovered.
-    guard locate_dep_package(mods, module_edges, importer, fqn) is Some((ctx, scan, rel)) else {
+    guard locate_dep_package(mods, module_edges, importer, fqn)
+      is Some((ctx, scan, rel)) else {
       continue
     }
     let dir = if rel.is_empty() { scan } else { scan + "/" + rel.join("/") }
@@ -210,14 +215,21 @@ fn register_module(
   let m = @config.decode_mod(entries) catch {
     e => raise @model.DecodeModule(path=dir + "/moon.mod", inner=e)
   }
-  let version = match m.version { Some(v) => v; None => "" }
+  let version = match m.version {
+    Some(v) => v
+    None => ""
+  }
   let identity = m.name + "@" + version
   let ctx = ModuleCtx::{
     mid: res.add_module(m.name, version~, versioned~),
     name: m.name,
     version,
     identity,
-    fqn_prefix: if versioned { identity } else { m.name },
+    fqn_prefix: if versioned {
+      identity
+    } else {
+      m.name
+    },
     root: dir,
     compile_flags: m.compile_flags,
     link_flags: m.link_flags,

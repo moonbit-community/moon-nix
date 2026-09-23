@@ -46,6 +46,9 @@ fn NativeToolchain::runtime_dir_sources(
 ) -> Array[String] {
   let dir = self.root + "/lib/runtime"
   let names : Array[String] = []
+  if !@os.exists(dir) {
+    return []
+  }
   for entry in @os.list_dir(dir) {
     match entry {
       File(name) => if name.has_suffix(".c") { names.push(name) }
@@ -250,9 +253,7 @@ pub fn Plan::env(self : Plan) -> @core.BuildEnv {
 
 ///|
 pub fn build_env(cfg : BuildConfig) -> @core.BuildEnv {
-  {
-    target: cfg.backend.name(),
-  }
+  { target: cfg.backend.name(), }
 }
 
 ///|

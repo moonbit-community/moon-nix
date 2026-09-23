@@ -3,7 +3,6 @@ import {
   "moon/util/os",
   "moon/mooncake/parse",
   "moon/mooncake/config",
-  "moon/util/pathx",
 }
 
 supported_targets = "native"

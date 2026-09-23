@@ -138,8 +138,7 @@ pub fn PackageFQN::can_import(
 }
 
 ///|
-/// The last segment of a package/module name (a LOGICAL, always-`/`-separated
-/// name — see `@pathx` for why this is not an OS-aware basename).
+/// The last segment of a package or module name.
 fn last_segment(name : String) -> String {
-  @pathx.last_seg(name)
+  @posix.Path::basename(name).to_owned()
 }

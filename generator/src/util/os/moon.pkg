@@ -5,9 +5,7 @@ import {
   "moonbitlang/core/encoding/utf8" @encoding/utf8,
 }
 
-// The generic synchronous native surface lives in `moonbitlang/x/os`,
-// with filesystem and process operations in its `fs` and `process` packages.
-// This package retains Moon-specific platform/build policy plus compatibility
-// wrappers for existing compiler call sites.
+// Filesystem and process operations come from `moonbitlang/x/os`.
+// This package adapts their results for the generator's existing call sites.
 
 supported_targets = "native"

@@ -26,16 +26,16 @@ fn split_fqn(fqn : String) -> (String, String) {
 
 ///|
 fn workspace_artifact_stem(cfg : BuildConfig, fqn : String) -> String {
-  @pathx.join([workspace_package_dir(cfg, fqn), artifact_name(fqn)])
+  @posix.Path::join(workspace_package_dir(cfg, fqn), artifact_name(fqn)).0
 }
 
 ///|
 fn workspace_package_dir(cfg : BuildConfig, fqn : String) -> String {
   let (module_name, package_path) = split_fqn(fqn)
   if package_path == "" {
-    @pathx.join([cfg.out_dir, module_name])
+    @posix.Path::join(cfg.out_dir, module_name).0
   } else {
-    @pathx.join([cfg.out_dir, module_name, package_path])
+    @posix.Path::join(@posix.Path::join(cfg.out_dir, module_name), package_path).0
   }
 }
 
@@ -43,9 +43,9 @@ fn workspace_package_dir(cfg : BuildConfig, fqn : String) -> String {
 fn artifact_name(fqn : String) -> String {
   let (module_name, package_path) = split_fqn(fqn)
   if package_path == "" {
-    @pathx.last_seg(module_name)
+    @posix.Path::basename(module_name).to_owned()
   } else {
-    @pathx.last_seg(package_path)
+    @posix.Path::basename(package_path).to_owned()
   }
 }
 
@@ -55,8 +55,9 @@ fn package_dir(cfg : BuildConfig, fqn : String) -> String {
     Some(m) =>
       if fqn == m {
         cfg.out_dir
-      } else if @pathx.strip_under(fqn, m) is Some(rel) {
-        @pathx.join([cfg.out_dir, rel])
+      } else if fqn.strip_prefix(m + "/").map(rest => rest.to_owned())
+        is Some(rel) {
+        @posix.Path::join(cfg.out_dir, rel).0
       } else {
         workspace_package_dir(cfg, fqn)
       }
@@ -81,9 +82,13 @@ fn artifact_stem(cfg : BuildConfig, fqn : String) -> String {
   match cfg.bundle_of {
     Some(m) =>
       if fqn == m {
-        cfg.out_dir + "/" + @pathx.last_seg(m)
-      } else if @pathx.strip_under(fqn, m) is Some(rel) {
-        @pathx.join([cfg.out_dir, rel, @pathx.last_seg(rel)])
+        cfg.out_dir + "/" + @posix.Path::basename(m).to_owned()
+      } else if fqn.strip_prefix(m + "/").map(rest => rest.to_owned())
+        is Some(rel) {
+        @posix.Path::join(
+          @posix.Path::join(cfg.out_dir, rel),
+          @posix.Path::basename(rel).to_owned(),
+        ).0
       } else {
         workspace_artifact_stem(cfg, fqn)
       }

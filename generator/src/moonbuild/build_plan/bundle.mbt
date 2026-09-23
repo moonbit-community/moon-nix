@@ -66,7 +66,10 @@ pub fn bundle_plan(
     Some(m) => m
     None => packages.get_package(roots[0].pkg).module_name
   }
-  let out = cfg.out_dir + "/" + @pathx.last_seg(module_name) + ".core"
+  let out = cfg.out_dir +
+    "/" +
+    @posix.Path::basename(module_name).to_owned() +
+    ".core"
   actions[out] = {
     primary_output: out,
     outputs: [out],

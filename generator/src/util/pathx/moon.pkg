@@ -1,6 +1,0 @@
-// Logical path-string utilities built from core String operations.
-//
-// These operate on LOGICAL names (module/package paths, artifact stems) which are
-// ALWAYS `/`-separated regardless of OS. The exporter supports Linux and macOS.
-import {
-}
