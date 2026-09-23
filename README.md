@@ -4,13 +4,12 @@ Build MoonBit projects with Nix. Toolchains come from **moonbit-overlay**;
 this repository owns dependency packaging, project builders, and generated
 build graphs.
 
-The standalone **moon2nix** generator reuses the parser, package discovery,
-package dependency solver, build planner, and command renderer extracted from
-[moonbit-community/moon](https://github.com/moonbit-community/moon). Its
-structured build plan is rendered directly as a `moon.nix` expression. Nix consumes it as
-one derivation per build action, with explicit artifact dependencies. Like
-cargo2nix, generation is a separate step: importing a checked-in plan does not
-run a resolver or compiler during Nix evaluation.
+The standalone **moon2nix** generator provides package discovery, dependency
+solving, build planning, and command rendering. Its structured build plan is
+rendered directly as a `moon.nix` expression. Nix consumes it as one derivation
+per build action, with explicit artifact dependencies. Like cargo2nix,
+generation is a separate step: importing a checked-in plan does not run a
+resolver or compiler during Nix evaluation.
 
 ## Development
 
@@ -96,7 +95,7 @@ moon2nix = import ./default.nix { inherit pkgs toolchain; };
 
 The registry builder preserves the previous **exact-version** traversal; it is
 not a replacement for moon's general module-version resolver. The generated
-plan path currently uses the extracted structured commands, while the migrated
+plan path currently uses structured commands, while the migrated
 fine-grained builders remain available as direct building blocks.
 
 ## Current boundaries
@@ -105,7 +104,7 @@ This is an initial working extraction, not full opam-nix/cargo2nix feature parit
 The generator handles a selected executable package with `wasm-gc`, `native`,
 or `js`. Automatic registry resolution, workspace discovery, test-plan export,
 cross compilation, and prebuild export are not implemented. Pass dependency
-module roots explicitly. Prebuild declarations are rejected before upstream
+module roots explicitly. Prebuild declarations are rejected before
 planning can execute scripts. Existing direct prebuild builders remain usable
 by callers who construct their own graph.
 
@@ -113,20 +112,12 @@ Native plans encode host-specific linking decisions and must be generated for
 the build host. Zig/Objective-C support in the migrated builders is not yet
 wired into the generator CLI's native toolchain configuration.
 
-## Validation and provenance
+## Validation
 
 `nix flake check` covers the generator, deterministic relocation, missing
 imports and unsupported/prebuild rejection, generated Wasm and Linux native
 plans across two modules, the migrated direct compiler builders, and a registry
 project build. The generated examples print `42`.
 
-[generator/UPSTREAM.json](generator/UPSTREAM.json) records the exact moon revision
-and extracted packages. The planner core is copied with only trailing-whitespace cleanup; upstream
-test files and test-only imports are omitted. The standalone CLI also adapts the
-`provision_local_inputs` package-listing logic from moon's `src/main/session.mbt`
-so each Nix action gets the required `all_pkgs.json` without creating a cyclic
-build graph. [generator.nix](generator.nix) pins the upstream `x` OS library and
-uses a small registry snapshot for the generator's other dependencies.
-
-The Nix builders retain the overlay's [MIT license](LICENSE). Extracted MoonBit
-sources and the generator use [Apache-2.0](generator/LICENSE).
+The Nix builders use the [MIT license](LICENSE). The MoonBit generator sources
+use [Apache-2.0](generator/LICENSE).

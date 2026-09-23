@@ -72,7 +72,7 @@ fn export_plan() -> Unit raise {
   let packages = @model.BuildDiscovery::from_discover_result(
     @discover.discover_modules(dirs),
   )
-  // Opaque prebuild scripts run during upstream planning. Reject them BEFORE
+  // Opaque prebuild scripts run during planning. Reject them BEFORE
   // calling the planner, so exporting a plan never executes project commands.
   for pkg in packages.all_packages() {
     if pkg.module_prebuild is Some(_) || !pkg.prebuild.is_empty() {
