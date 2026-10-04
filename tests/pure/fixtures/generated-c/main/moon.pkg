@@ -1,0 +1,4 @@
+options("is-main": true, "native-stub": ["generated/stub.c"], "pre-build": [
+  { "input": "seed.txt", "output": "generated/value.h", "command": "python3 generate.py header $input $output" },
+  { "input": "generated/value.h", "output": ["generated/stub.c", "generated.mbt"], "command": "python3 generate.py sources $input $output" },
+])

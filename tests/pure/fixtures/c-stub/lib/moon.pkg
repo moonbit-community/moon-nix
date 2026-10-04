@@ -1,0 +1,2 @@
+import { "test/cstub/helper" }
+options("native-stub": ["c/stub.c", "extra/stub.c"])

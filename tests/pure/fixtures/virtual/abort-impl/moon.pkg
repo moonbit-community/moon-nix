@@ -1,0 +1,1 @@
+options(implement: "moonbitlang/core/abort")

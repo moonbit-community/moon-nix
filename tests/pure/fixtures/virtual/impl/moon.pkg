@@ -1,0 +1,2 @@
+import { "test/virtual/helper" }
+options(implement: "test/virtual/api")

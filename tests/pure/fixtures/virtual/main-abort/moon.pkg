@@ -1,0 +1,1 @@
+options("is-main": true, overrides: ["test/virtual/abort-impl"])

@@ -29,6 +29,7 @@
   # default empty ⇒ the link is unchanged (backward-compatible).
   pkgConfig ? [ ],
   buildInputs ? [ ],
+  nativeBuildInputs ? [ ],
   toolchain,
 }:
 let
@@ -41,7 +42,7 @@ in
 stdenv.mkDerivation {
   name = pname;
   dontUnpack = true;
-  nativeBuildInputs = lib.optional (pkgConfig != [ ]) pkg-config;
+  nativeBuildInputs = nativeBuildInputs ++ lib.optional (pkgConfig != [ ]) pkg-config;
   inherit buildInputs;
   phases = [ "buildPhase" ];
   buildPhase = ''

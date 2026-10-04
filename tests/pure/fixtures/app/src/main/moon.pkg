@@ -1,0 +1,4 @@
+import { "test/lib" @old, "test/bridge" as bridge }
+import { "moonbitlang/core/array" } for "wasm-gc"
+import { "missing/test-only" } for "test"
+options("is-main": true, targets: { "excluded.mbt": ["not", "release"] })

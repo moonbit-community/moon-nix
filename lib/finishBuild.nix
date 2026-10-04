@@ -5,6 +5,7 @@
   roots,
   actions,
   resolvedModules ? null,
+  passthru ? { },
 }:
 let
   inherit (pkgs) lib;
@@ -15,6 +16,7 @@ pkgs.runCommand name
       inherit actions;
       roots = map (root: root.artifact) roots;
     }
+    // passthru
     // lib.optionalAttrs (resolvedModules != null) { inherit resolvedModules; };
   }
   (

@@ -1,0 +1,2 @@
+package "test/virtual/api"
+pub fn value() -> Int

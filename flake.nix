@@ -37,8 +37,21 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          pure = import ./tests/pure {
+            inherit pkgs;
+            toolchain = moonbit-overlay.packages.${system}.latest;
+          };
         in
         {
+          pure-evaluation = pure.evaluation;
+          pure-wasm = pure.wasm;
+          pure-js = pure.js;
+          pure-native = pure.native;
+          c-stub = pure.c-stub;
+          virtual = pure.virtual;
+          workspace-prebuild = pure.workspace-prebuild;
+          generated-c = pure.generated-c;
+          registry-source = pure.registry-source;
           formatting = pkgs.runCommand "moon2nix-formatting" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
             find ${self} -name '*.nix' -print0 | xargs -0 nixfmt --check
             touch $out

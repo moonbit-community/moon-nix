@@ -1,0 +1,4 @@
+import { "work/shared" }
+options("is-main": true)
+dev_build(rule: "copy", input: "seed.txt", output: "src/main/intermediate.txt")
+dev_build(rule: "generate", input: "src/main/intermediate.txt", output: "src/main/generated.mbt")

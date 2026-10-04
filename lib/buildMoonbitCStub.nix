@@ -16,6 +16,8 @@
   # them. Both default empty ⇒ the compile is unchanged (backward-compatible).
   pkgConfig ? [ ],
   buildInputs ? [ ],
+  includeDirs ? [ ],
+  nativeBuildInputs ? [ ],
   toolchain,
 }:
 let
@@ -26,15 +28,17 @@ in
 stdenv.mkDerivation {
   name = pname;
   dontUnpack = true;
-  nativeBuildInputs = lib.optional (pkgConfig != [ ]) pkg-config;
+  nativeBuildInputs = nativeBuildInputs ++ lib.optional (pkgConfig != [ ]) pkg-config;
   inherit buildInputs;
   phases = [ "buildPhase" ];
   buildPhase = ''
     runHook preBuild
     mkdir -p $out
     export HOME=$TMPDIR
-    $CC -o $out/${pname}.o -I${toolchain}/include -g -c -fwrapv -fno-strict-aliasing \
-      -Og ${pkgCfgCflags} ${stub}
+    $CC -o $out/${pname}.o -I${toolchain}/include -g -x c -c -fwrapv -fno-strict-aliasing \
+      -Og ${
+        lib.escapeShellArgs (map (dir: "-I${dir}") includeDirs)
+      } ${pkgCfgCflags} ${lib.escapeShellArg (toString stub)}
     runHook postBuild
   '';
 }

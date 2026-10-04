@@ -1,0 +1,2 @@
+import { "test/cstub/lib" }
+options("is-main": true, "native-stub": ["main.c"])

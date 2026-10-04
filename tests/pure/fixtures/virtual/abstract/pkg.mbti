@@ -1,0 +1,2 @@
+package "test/virtual/abstract"
+pub fn value() -> Int

@@ -10,7 +10,181 @@ that explicitly wires one Nix derivation per build action. Like cargo2nix,
 generation is a separate step: importing the checked-in file does not run a
 resolver or compiler during Nix evaluation.
 
-** Development
+** Nix project builds (experimental)
+
+=buildProject= parses manifests, runs MVS, discovers the selected main package's
+import closure, and creates per-package compiler derivations using Nix code.
+No generator, generated =moon.nix= or additional dependency lock file is needed.
+The existing generated-plan API remains available.
+
+Declare the registry once as a non-flake input in your project's =flake.nix=:
+
+#+begin_src nix
+inputs.mooncake-index = {
+  url = "git+https://mooncakes.io/git/index";
+  flake = false;
+};
+#+end_src
+
+Then use the locked snapshot when building:
+
+#+begin_src nix
+let
+  moon2nix = inputs.moon2nix.lib.mkMoon2Nix {
+    inherit pkgs;
+    toolchain = inputs.moonbit-overlay.packages.${pkgs.system}.latest;
+  };
+in moon2nix.buildProject {
+  src = ./.;
+  mainPackage = "my-org/app/main";
+  target = "native"; # also wasm-gc or js
+  registry = inputs.mooncake-index;
+}
+#+end_src
+
+=nix flake update= updates the registry snapshot in =flake.lock=. =nix build=
+resolves dependencies from that snapshot and fetches selected ZIP archives using
+the registry's SHA-256 =checksum=. Users do not need per-dependency inputs or
+NAR hashes. Unchanged manifests, registry snapshot and toolchain give the same
+resolution and verified source bytes. MVS selects minimum satisfying versions;
+a newer registry snapshot does not necessarily upgrade every dependency.
+
+The default archive URL is
+=https://download.mooncakes.io/user/<module>/<version>.zip=.
+=registryDownloadUrl= selects a mirror's base URL; an index record's =url= takes
+precedence. Archives must have =moon.mod= or =moon.mod.json= at their root, as
+Moon's registry packages do. Checksum failures abort the build.
+
+Reading manifests from downloaded ZIPs requires IFD: Nix builds the
+checksum-verified download and unpacking derivations before continuing
+planning. There is no external resolver/planner executable. If IFD must be
+disabled, =sources."name@version"= can override a source with an already
+available tree; records with =src= or tarball =url= + =narHash= also remain
+supported. =sourceFetcher = module: ...= can replace the default fetcher.
+The =registry= argument can also be an attrset keyed by module name and version,
+with =deps= and =checksum= / optional =url= in each record.
+
+Implemented: DSL =moon.mod=/=moon.pkg= and strict JSON manifests; source-directory
+options; Moon MVS with separate 0/1 and >=2 compatibility groups; version-specific
+import edges and compiler package names; aliases; backend-conditional imports;
+release-mode target conditions and filename suffixes; compile/link flags;
+diagnostics; bin-name; package cycle errors; transitive interface listings for
+re-exports. Only reachable packages are read. Compiler inputs are filtered per
+package, excluding tests, inactive sources and child packages.
+
+*** C native stubs
+
+For the native backend, =options("native-stub": ["stub.c"])= (or the JSON
+=native-stub= key) compiles each declared C file using the supplied =stdenv=,
+archives objects per package and links all reachable packages' stub archives.
+The compiler gets the toolchain's =moonbit.h= and the package root as include
+paths. Nested C files, package-local =.h= headers, multiple objects with the same
+basename and references to dependency packages' C symbols are supported.
+
+=stdenv= chooses the compiler; =nativePackageInputs = package: [ pkgs.someLib ]=
+adds Nix system dependencies to a package's C compilation and final executable.
+=package= contains =fqn=, =moduleKey=, =rel= and parsed =raw= manifest fields.
+Custom manifest link settings are not implemented yet. Declared stub files are
+compiled as C; there is no separate language dispatch. Non-native backends ignore
+=native-stub= declarations.
+
+*** Workspaces and local modules
+
+Pass the directory containing =moon.work= as =src=. Its =members= are loaded
+as local modules; =mainPackage= chooses the executable across those members.
+Local modules override registry modules by name, and their external dependencies
+are resolved against the same locked registry. Local members inside the project
+need no separate flake inputs.
+
+=localSources = [ inputs.shared ];= adds module roots outside the workspace.
+These can be flake path/Git inputs, so =flake.lock= also tracks their sources.
+Duplicate local module names fail rather than silently choosing one.
+
+*** Declarative prebuild
+
+Package =pre-build= and =dev_build= rules support declared inputs, outputs,
+inline commands and named =rule= commands from module/package manifests.
+Declare applications used by those commands in Nix:
+
+#+begin_src nix
+moon2nix.buildProject {
+  src = ./.;
+  mainPackage = "my-org/app/main";
+  registry = inputs.mooncake-index;
+  prebuildInputs = package: [ pkgs.python3 ];
+}
+#+end_src
+
+Declared applications are in =PATH= and their binaries are also available through
+=$mooncake_bin=. =$mod_dir=, =$pkg_dir=, =$input= and =$output= are expanded;
+=:embed= invokes =moon tool embed=. Legacy =pre-build= paths are relative to
+the package; =dev_build= paths are relative to the module. Outputs must belong
+to the package that declares the rule. Rules run in a writable source copy and
+only declared outputs are passed onward. Output/input edges order chained rules;
+duplicate outputs and cycles fail during planning.
+
+Generated MoonBit sources, virtual interfaces, C stubs and headers feed compiler
+derivations directly. Nix does not read generated contents during evaluation, so
+prebuild itself does not require IFD. MoonBit backend/test filters also apply to
+generated filenames. Each rule currently snapshots the whole module, so edits
+elsewhere in that module can invalidate code generation.
+
+Prebuild runs for local modules by default. Registry packages normally ship
+generated files; set =runDependencyPrebuilds = true;= to run their rules too,
+and provide their applications through =prebuildInputs=. Registry =bin-deps=
+and opaque unstable prebuild hooks are not translated automatically.
+
+*** Virtual packages
+
+=virtual= interfaces, default implementations, =implement= and main-package
+=overrides= are supported. Interfaces compile separately from implementations;
+consumers depend on the interface derivation, while the executable links the
+selected implementation. Switching an override can reuse consumers' compilation.
+Packages without a default require an override. Missing implementations, invalid
+implementation targets and conflicting overrides fail during planning.
+
+Virtual interfaces use =pkg.mbti= or the legacy =<package-name>.mbti= filename.
+The standard-library =moonbitlang/core/abort= interface can also be overridden.
+
+Sub-packages, =bin-deps=, opaque unstable hooks and custom manifest link settings
+are not implemented yet. This API builds one executable, not tests, module
+bundles or cross builds. JSONC is not accepted. Semver prerelease ordering is
+respected (the older generator compares only the numeric core).
+
+=passthru.plan= exposes the resolved modules, package nodes and dependency-first
+order plus selected =linkOrder= and =overrides=; =passthru.actions= exposes compiler/link, =interfaces= and =prebuild= derivations and, on native,
+=runtime=, =executable= and =cStubs= (objects and archives keyed by package).
+=all_pkgs.json= is an ordinary compiler input produced by Nix.
+
+*** Validation
+
+#+begin_src sh
+# Includes checksum-based registry fetching (IFD enabled).
+nix flake check
+
+# Available-source builds, including prebuild, also work without IFD.
+nix build --no-link --option allow-import-from-derivation false \
+  .#checks.x86_64-linux.pure-evaluation \
+  .#checks.x86_64-linux.pure-wasm \
+  .#checks.x86_64-linux.pure-js \
+  .#checks.x86_64-linux.pure-native \
+  .#checks.x86_64-linux.c-stub \
+  .#checks.x86_64-linux.workspace-prebuild \
+  .#checks.x86_64-linux.generated-c \
+  .#checks.x86_64-linux.virtual
+#+end_src
+
+The compiler fixtures link two incompatible versions of one module and consume
+a transitive =pub using= re-export; wasm-gc, JS and native must print =3=.
+The registry check reads real-format JSON-lines indexes and fetches three ZIPs
+using only their checksums and the download base URL. The C test prints =43=
+using four C objects across three packages, nested headers and cross-archive
+references. Workspace and chained prebuild tests print =42=, including generated
+C stubs and headers. Virtual fixtures exercise defaults, overrides, no-default
+interfaces and a standard-library abort override across all three backends; the
+consumer derivation stays identical when switching implementations.
+
+* Development
 
 The flake currently follows the =fix/modernize-moonbit-tests= branch of
 =moonbit-overlay=, with its exact revision recorded in =flake.lock=. This can

@@ -41,8 +41,25 @@ let
   translateMoonbitCHeader = import ./translateMoonbitCHeader.nix { inherit lib stdenv zig; };
   buildMoonbitObjcStub = import ./buildMoonbitObjcStub.nix { inherit stdenv clang; };
   archiveMoonbitStubs = import ./archiveMoonbitStubs.nix { inherit lib stdenv; };
+  manifest = import ./pure/manifest.nix { inherit lib; };
+  resolver = import ./pure/resolve.nix { inherit lib manifest; };
+  pureBuilders = {
+    buildAction = import ./buildAction.nix { inherit pkgs toolchain; };
+    finishBuild = import ./finishBuild.nix { inherit pkgs; };
+  };
 in
 {
+  buildProject = import ./pure/buildProject.nix {
+    inherit
+      pkgs
+      toolchain
+      manifest
+      resolver
+      ;
+    builders = pureBuilders;
+  };
+  parseManifest = kind: text: manifest.normalize (manifest.parseDSL kind text);
+  resolveDependencies = resolver.resolve;
   buildAction = import ./buildAction.nix { inherit pkgs toolchain; };
   finishBuild = import ./finishBuild.nix { inherit pkgs; };
   inherit

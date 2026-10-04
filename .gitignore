@@ -3,8 +3,11 @@
 /generator/.mooncakes/
 /generator/x
 /examples/
-/tests/
+/tests/*
+!/tests/pure/
 /test-*.nix
 **/*_test.mbt
 **/*_wbtest.mbt
 **/test_*.mbt
+
+!/tests/pure/fixtures/app/src/main/main_test.mbt
