@@ -3,7 +3,7 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     moonbit-overlay = {
-      url = "github:moonbit-community/moonbit-overlay/fix/modernize-moonbit-tests";
+      url = "github:moonbit-community/moonbit-overlay/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };

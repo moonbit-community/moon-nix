@@ -183,9 +183,8 @@ consumer derivation stays identical when switching implementations.
 
 * Development
 
-The flake currently follows the =fix/modernize-moonbit-tests= branch of
-=moonbit-overlay=, with its exact revision recorded in =flake.lock=. This can
-return to the overlay's default branch after the SDK-interface refactor lands.
+The flake follows the =master= branch of =moonbit-overlay=, with its exact
+revision recorded in =flake.lock=.
 The library itself takes =pkgs= and =toolchain= explicitly.
 
 #+begin_src bash
