@@ -9,7 +9,7 @@
 package:
 let
   inherit (pkgs) lib;
-  fail = message: throw "moon2nix prebuild ${package.fqn}: ${message}";
+  fail = message: throw "moon-nix prebuild ${package.fqn}: ${message}";
   asList = value: if builtins.isList value then value else [ value ];
   safePath =
     path:

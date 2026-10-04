@@ -1,7 +1,7 @@
 # Archive a package's compiled C-FFI stub `.o`s into a static `lib<pkg>.a`, which
 # `makeMoonbitExecutable` then links. `$AR` is stdenv's wrapped archiver.
 #
-#   moon2nix.archiveMoonbitStubs {
+#   moon-nix.archiveMoonbitStubs {
 #     pname = "liba_b";
 #     objs  = [ { drv = stubODrv; name = "a_b_0.o"; } ];
 #   }

@@ -3,7 +3,7 @@
 # [buildMoonbitPackage]; the standard-library `abort.core` / `core.core` are pulled
 # from the toolchain bundle automatically.
 #
-#   moon2nix.linkMoonbitProgram {
+#   moon-nix.linkMoonbitProgram {
 #     pname = "a_b";
 #     main  = "a/b";                                   # `-main` entry FQN
 #     cores = [ { core = depDrv; name = "dep_stem"; }  # deps first …

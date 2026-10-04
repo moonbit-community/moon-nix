@@ -8,9 +8,8 @@ let
     clang
     pkg-config
     ;
-  # Fine-grained, per-package builders (the crate2nix/cargo2nix analogue): an
-  # external planner emits one call per package, wiring deps through derivation
-  # outputs. Toolchain-agnostic — the caller passes `toolchain`.
+  # Low-level package builders remain available for custom derivation graphs.
+  # The caller supplies the toolchain.
   buildMoonbitPackage = import ./buildMoonbitPackage.nix { inherit lib stdenv; };
   buildMoonbitInterface = import ./buildMoonbitInterface.nix { inherit lib stdenv; };
   runMoonbitPrebuild = import ./runMoonbitPrebuild.nix { inherit lib stdenv; };

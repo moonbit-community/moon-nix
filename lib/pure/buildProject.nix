@@ -7,7 +7,7 @@
 }:
 let
   inherit (pkgs) lib;
-  fail = message: throw "moon2nix project: ${message}";
+  fail = message: throw "moon-nix project: ${message}";
   backends = [
     "wasm-gc"
     "wasm"

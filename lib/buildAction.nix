@@ -69,12 +69,12 @@ let
     else if command.kind == "exec-to" then
       "${argv} > ${shellArg command.stdout}"
     else
-      throw "moon2nix: unsupported command kind ${command.kind}";
+      throw "moon-nix: unsupported command kind ${command.kind}";
 in
 pkgs.runCommandWith
   {
     stdenv = if stdenv == null then pkgs.stdenv else stdenv;
-    name = "moon2nix-${builtins.baseNameOf action.id}";
+    name = "moon-nix-${builtins.baseNameOf action.id}";
     derivationArgs = {
       nativeBuildInputs = [
         toolchain

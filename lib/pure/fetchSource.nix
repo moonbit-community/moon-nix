@@ -7,7 +7,7 @@
 module:
 let
   inherit (pkgs) lib;
-  fail = message: throw "moon2nix fetch: ${message}";
+  fail = message: throw "moon-nix fetch: ${message}";
   entry = module.entry;
   checksum =
     entry.checksum or (fail "${module.name}@${module.version}: registry record has no checksum");

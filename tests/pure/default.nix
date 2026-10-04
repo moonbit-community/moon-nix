@@ -268,7 +268,7 @@ let
     if failures != [ ] then
       throw "pure Nix checks failed: ${lib.concatStringsSep ", " failures}"
     else
-      pkgs.writeText "moon2nix-pure-evaluation" (builtins.toJSON checks);
+      pkgs.writeText "moon-nix-pure-evaluation" (builtins.toJSON checks);
 in
 {
   inherit
@@ -278,19 +278,19 @@ in
     archiveProject
     ;
   workspace-prebuild =
-    pkgs.runCommand "moon2nix-workspace-prebuild-test" { nativeBuildInputs = [ toolchain ]; }
+    pkgs.runCommand "moon-nix-workspace-prebuild-test" { nativeBuildInputs = [ toolchain ]; }
       ''
         moonrun ${workspaceProject "wasm-gc"}/bin/main.wasm > result
         test "$(cat result)" = 42
         cp result $out
       '';
-  generated-c = pkgs.runCommand "moon2nix-generated-c-test" { } ''
+  generated-c = pkgs.runCommand "moon-nix-generated-c-test" { } ''
     ${generatedCProject}/bin/main > result
     test "$(cat result)" = 42
     cp result $out
   '';
   virtual =
-    pkgs.runCommand "moon2nix-virtual-test"
+    pkgs.runCommand "moon-nix-virtual-test"
       {
         nativeBuildInputs = [
           toolchain
@@ -340,27 +340,27 @@ in
         }
         cp result $out
       '';
-  c-stub = pkgs.runCommand "moon2nix-c-stub-test" { } ''
+  c-stub = pkgs.runCommand "moon-nix-c-stub-test" { } ''
     ${cProject}/bin/main > result
     test "$(cat result)" = 43
     cp result $out
   '';
-  registry-source = pkgs.runCommand "moon2nix-registry-source-test" { } ''
+  registry-source = pkgs.runCommand "moon-nix-registry-source-test" { } ''
     ${archiveProject}/bin/main > result
     test "$(cat result)" = 3
     cp result $out
   '';
-  wasm = pkgs.runCommand "moon2nix-pure-wasm-test" { nativeBuildInputs = [ toolchain ]; } ''
+  wasm = pkgs.runCommand "moon-nix-pure-wasm-test" { nativeBuildInputs = [ toolchain ]; } ''
     moonrun ${project "wasm-gc"}/bin/main.wasm > result
     test "$(cat result)" = 3
     cp result $out
   '';
-  js = pkgs.runCommand "moon2nix-pure-js-test" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
+  js = pkgs.runCommand "moon-nix-pure-js-test" { nativeBuildInputs = [ pkgs.nodejs ]; } ''
     node ${project "js"}/bin/main.js > result
     test "$(cat result)" = 3
     cp result $out
   '';
-  native = pkgs.runCommand "moon2nix-pure-native-test" { } ''
+  native = pkgs.runCommand "moon-nix-pure-native-test" { } ''
     ${project "native"}/bin/main > result
     test "$(cat result)" = 3
     cp result $out

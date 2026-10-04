@@ -3,7 +3,7 @@
 # (`$CC` — the nixpkgs cc-wrapper, which resolves crt/libc correctly), the sources
 # and headers from the `toolchain`.
 #
-#   moon2nix.buildMoonbitRuntime { toolchain = …; }   # → $out/runtime.o
+#   moon-nix.buildMoonbitRuntime { toolchain = …; }   # → $out/runtime.o
 { stdenv }:
 {
   pname ? "moonbit-runtime",

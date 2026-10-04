@@ -2,7 +2,7 @@
 # group. Majors 0 and 1 share a group; every major >= 2 is separate.
 { lib, manifest }:
 let
-  fail = message: throw "moon2nix resolve: ${message}";
+  fail = message: throw "moon-nix resolve: ${message}";
   semver =
     version:
     let

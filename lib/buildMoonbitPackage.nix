@@ -8,7 +8,7 @@
 # Nix derivation outputs. wasm-gc only for now (native drags nixpkgs C libraries
 # and is handled by a separate builder).
 #
-#   moon2nix.buildMoonbitPackage {
+#   moon-nix.buildMoonbitPackage {
 #     pname = "a_b";                    # derivation name + artifact stem
 #     pkg   = "a/b";                    # `-pkg` FQN
 #     src   = ./a/b;                    # the package source directory

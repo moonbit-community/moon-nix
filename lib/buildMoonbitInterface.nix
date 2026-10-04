@@ -5,7 +5,7 @@
 # dependency's `.mi`, and the package's optional default-impl `.core` is a
 # separate `buildMoonbitPackage { noMi = true; … }` call.
 #
-#   moon2nix.buildMoonbitInterface {
+#   moon-nix.buildMoonbitInterface {
 #     pname = "a_logger";                  # derivation name + artifact stem
 #     pkg   = "a/logger";                  # `-pkg` FQN
 #     src   = ./a/logger;                  # the package source directory

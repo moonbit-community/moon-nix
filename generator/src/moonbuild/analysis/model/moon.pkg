@@ -1,6 +1,0 @@
-import {
-  "moon/mooncake/config",
-  "moonbitlang/x/path/posix",
-}
-
-supported_targets = "native"

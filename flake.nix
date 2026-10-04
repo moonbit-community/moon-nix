@@ -20,19 +20,11 @@
       ];
     in
     {
-      lib.mkMoon2Nix = import ./default.nix;
+      lib = {
+        mkMoonNix = import ./default.nix;
+        mkMoon2Nix = self.lib.mkMoonNix; # Compatibility for existing flakes.
+      };
       formatter = forEachSystem (system: nixpkgs.legacyPackages.${system}.nixfmt);
-      packages = forEachSystem (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          toolchain = moonbit-overlay.packages.${system}.latest;
-        in
-        rec {
-          moon2nix = import ./generator.nix { inherit pkgs toolchain; };
-          default = moon2nix;
-        }
-      );
       checks = forEachSystem (
         system:
         let
@@ -52,7 +44,7 @@
           workspace-prebuild = pure.workspace-prebuild;
           generated-c = pure.generated-c;
           registry-source = pure.registry-source;
-          formatting = pkgs.runCommand "moon2nix-formatting" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
+          formatting = pkgs.runCommand "moon-nix-formatting" { nativeBuildInputs = [ pkgs.nixfmt ]; } ''
             find ${self} -name '*.nix' -print0 | xargs -0 nixfmt --check
             touch $out
           '';

@@ -1,8 +1,0 @@
-import {
-  "moon/moonbuild/analysis/model",
-  "moon/util/os",
-  "moon/mooncake/parse",
-  "moon/mooncake/config",
-}
-
-supported_targets = "native"

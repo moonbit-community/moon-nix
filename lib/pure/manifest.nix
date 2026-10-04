@@ -1,7 +1,7 @@
 # Parse manifests during evaluation. No executable parser or generated files.
 { lib }:
 let
-  fail = message: throw "moon2nix manifest: ${message}";
+  fail = message: throw "moon-nix manifest: ${message}";
   tokenize =
     input:
     let
