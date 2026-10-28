@@ -30,6 +30,11 @@ let
     mainPackage = "test/cstub/main";
     target = "native";
   };
+  dotFilesProject = api.buildProject {
+    src = ./fixtures/dot-files;
+    mainPackage = "test/dotfiles/main";
+    target = "native";
+  };
   archiveRegistry = {
     "test/lib" = {
       "0.1.0" = {
@@ -204,6 +209,16 @@ let
     workspace =
       builtins.length (workspaceProject "wasm-gc").plan.order == 3
       && !(workspaceProject "wasm-gc").plan.resolution.selected ? "work/shared";
+    workspaceDotMember =
+      builtins.length
+        (api.buildProject {
+          src = ./fixtures/dot-member;
+          mainPackage = "test/dot/main";
+        }).plan.order == 1;
+    dotFilePaths =
+      dotFilesProject.passthru.plan.packages."test/dotfiles@0.1.0|main".stubs == [
+        "stub.c"
+      ];
     prebuildChain =
       builtins.length (workspaceProject "wasm-gc").actions.prebuild."work/app@0.1.0|main" == 2;
     prebuildCycle = rejected (prebuildRules [
@@ -343,6 +358,11 @@ in
   c-stub = pkgs.runCommand "moon-nix-c-stub-test" { } ''
     ${cProject}/bin/main > result
     test "$(cat result)" = 43
+    cp result $out
+  '';
+  dot-files = pkgs.runCommand "moon-nix-dot-files-test" { } ''
+    ${dotFilesProject}/bin/main > result
+    test "$(cat result)" = 42
     cp result $out
   '';
   registry-source = pkgs.runCommand "moon-nix-registry-source-test" { } ''

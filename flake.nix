@@ -40,6 +40,7 @@
           pure-js = pure.js;
           pure-native = pure.native;
           c-stub = pure.c-stub;
+          dot-files = pure.dot-files;
           virtual = pure.virtual;
           workspace-prebuild = pure.workspace-prebuild;
           generated-c = pure.generated-c;
